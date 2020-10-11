@@ -3,22 +3,29 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt
 
 
+class PointData(QtCore.QPoint):
+    def __init__(self, time=0, value=0):
+        super().__init__(time, value)
+        self.time = time
+        self.value = value
+
+
 class CurveData(object):
-    def __init__(self, number_of_segments):
+    def __init__(self, segment_num):
         super().__init__()
 
-        self.width = 255
-        self.height = 127
+        self.segment_time_max = 127
+        self.height_max = 127
 
-        self._num_pt = number_of_segments + 1
-        self._curve_pts = [[0,0]] * self._num_pt
-        self._curve_pts.append( [self.width, 0] )
+        self.segments = [[0,0]] * segment_num
+        self._curve_pts = [[0,0]] * (segment_num+1)
 
-    def __getitem__(self, item):
-        return self._curve_pts[item]
+    def __getitem__(self, i):
+        t = [p[0] for p in self.segments[:i]]
+        return sum(t), self.segments[i-1][1]
 
     def __setitem__(self, key, value):
-        print('set val')
+        print('set val', key, value)
         self._curve_pts[key] = value
 
     def __len__(self):
@@ -26,46 +33,72 @@ class CurveData(object):
 
     def __delitem__(self, key):
         del self._curve_pts[key]
+        del self.segments[key]
 
-    # @property
-    # def width(self):
-    #     t = [p[0] for p in self._curve_pts]
-    #     return sum(t)
+    def setSegment(self, i, time, level):
+        self.segments[i] = [time, level]
+
+    @property
+    def line(self, i):
+        return self[1], self[i+1]
+
+    @property
+    def width(self):
+        return self[-1][0]
 
 
 class CurveData_ADSR(CurveData):
+    segment_num = 4
+    max_level = 127
+
     def __init__(self):
-        super().__init__(4)
-        self.max_value = 127
-        self.height_ratio = 127 / self.height
+        super().__init__(CurveData_ADSR.segment_num)
+        # self.height_ratio = 127 / self.height
 
-        self[0] = [0,0]
-        self.attack_time = 20
-        self.attack_level = 127
-        self.decay_time = 20
-        self.sustain_level = 80
-        self.release_time = 20
+        self.attack = 20, 127
+        self.decay = 35
+        self.sustain = 80
+        self.release = 20
+
+    # region PROPS
+    @property
+    def attack(self) -> [int, int]:
+        return self.segments[0]
+
+    @attack.setter
+    def attack(self, val):
+        self.setSegment(0, *val)
 
     @property
-    def attack_time(self):
-        return self[1][0]
+    def decay(self) -> int:
+        return self.segments[1][0]
 
-    @attack_time.setter
-    def attack_time(self, val):
-        self[1][0] = val
-
-    @property
-    def attack_level(self):
-        return self[1][1]
-
-    @attack_level.setter
-    def attack_level(self, val):
-        self[1][1] = val
+    @decay.setter
+    def decay(self, val):
+        self.setSegment(1, val, self.sustain)
 
     @property
-    def sustain_time(self):
-        st = self.width - self.attack_time - self.decay_time - self.release_time
-        return st
+    def sustain(self) -> int:
+        return self.segments[2][1]
+
+    @sustain.setter
+    def sustain(self, val):
+        sustain_time= self.width + self.segment_time_max / self.segment_num
+        self.setSegment(2, max(30, sustain_time), val)
+
+    @property
+    def release(self) -> int:
+        return self.segments[3][0]
+
+    @release.setter
+    def release(self, val):
+        self.setSegment(3, val, 0)
+    # endregion
+
+    # region POINTS
+    @property
+    def start_pt(self):
+        return QtCore.QPoint( 0, 0 )
 
     @property
     def attack_pt(self):
@@ -73,25 +106,21 @@ class CurveData_ADSR(CurveData):
 
     @property
     def decay_pt(self):
-        pt_x = self.attack_pt.x() + self.decay_time
-        pt_y = self.sustain_level
-        return QtCore.QPoint( pt_x, pt_y )
+        return QtCore.QPoint( *self[2] )
 
     @property
     def sustain_pt(self):
-        pt_x = self.decay_pt.x() + self.sustain_time
-        pt_y = self.sustain_level
-        return QtCore.QPoint( pt_x, pt_y )
+        return QtCore.QPoint( *self[3] )
 
     @property
     def release_pt(self):
-        pt_x = self.width
-        pt_y = 0
-        return QtCore.QPoint( pt_x, pt_y )
+        return QtCore.QPoint( *self[4] )
+    # endregion
 
+    # region CURVES
     @property
     def attack_crv(self):
-        pt_1 = QtCore.QPoint( *self[0] )   #TODO: use self[0] as start point
+        pt_1 = self.start_pt
         pt_2 = self.attack_pt
         return QtCore.QLine(pt_1, pt_2)
 
@@ -112,112 +141,170 @@ class CurveData_ADSR(CurveData):
         pt_1 = self.sustain_pt
         pt_2 = self.release_pt
         return QtCore.QLine(pt_1, pt_2)
+    # endregion
 
+class CurveView(QWidget):
+    pass
 
 class QMCAmpADSR(QWidget):
     """Qt Midi Controller Amplifier/ADSR"""
 
+    #TODO: Add ghost curve
+    #TODO: Shade (gradient) curve area
     def __init__(self, *args, **kwargs):
         super().__init__()
 
-        self._curve_data = CurveData_ADSR()
+        self._ADSR_curve_data = CurveData_ADSR()
 
+        self.backgroundColor = QtGui.QColor(4,21,37)
+        self.borderColor = Qt.blue
+        self.contentBorderColor = QtGui.QColor(74,86,100)
+        self.lineColor = QtGui.QColor(59,118,168)
+        self.pointColor = QtGui.QColor(255,247,197)
+        self.gridColor = QtGui.QColor(74,86,100,127)
+
+        self.lineWidth = 3
+        self.pointSize = 3
+        self.borderWidth = 3
+        self.contentBorderWidth = 2
+
+        self.setContentsMargins(20,20,20,20)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.MinimumExpanding,
             QtWidgets.QSizePolicy.MinimumExpanding
         )
 
+    #region GETTERS
     @property
     def attack_time(self):
-        return QtCore.QPoint(self._curve_data.attack_time)
+        return self._ADSR_curve_data.attack[0]
 
     @property
     def attack_level(self):
-        return QtCore.QPoint(self._curve_data.attack_level)
+        return self._ADSR_curve_data.attack[1]
 
     @property
     def decay_time(self):
-        return self._curve_data.decay_time
+        return self._ADSR_curve_data.decay[0]
 
     @property
     def sustain_time(self):
-        return self._curve_data.sustain_time
+        return self._ADSR_curve_data.sustain[0]
 
     @property
     def sustain_level(self):
-        return self._curve_data.sustain_level
+        return self._ADSR_curve_data.sustain[1]
 
     @property
     def release_time(self):
-        return self._curve_data.release_time
+        return self._ADSR_curve_data.release[0]
+    #endregion
 
+    # region SETTERS
     @attack_time.setter
     def attack_time(self, val):
-        self._curve_data.attack_time = val
+        self._ADSR_curve_data.attack[0] = val
 
     @attack_level.setter
     def attack_level(self, val):
-        self._curve_data.attack_level = val
+        self._ADSR_curve_data.attack[1] = val
 
     @decay_time.setter
     def decay_time(self, val):
-        self._curve_data.decay_time = val
+        self._ADSR_curve_data.decay[0] = val
 
     @sustain_level.setter
     def sustain_level(self, val):
-        self._curve_data.sustain_level = val
+        self._ADSR_curve_data.sustain[1] = val
 
     @release_time.setter
     def release_time(self, val):
-        self._curve_data.release_time = val
+        self._ADSR_curve_data.release[0] = val
+    # endregion
 
 
     def sizeHint(self):
-        return QtCore.QSize(100, 50)
+        return QtCore.QSize(200, 167)
+
+    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+        geom = self.contentsRect()
+        # self._curve_data.width = geom.width()
+        # self._curve_data.height = geom.height()
+        self.width_scale = self.contentsRect().width()/self._ADSR_curve_data.width
+        self.heighth_scale = self.contentsRect().height()/self._ADSR_curve_data.height_max
+
 
     def paintEvent(self, e):
-        geom = self.geometry()
-        self._curve_data.width = geom.width()
-        self._curve_data.height = geom.height()
-
         # background
         self.drawBackground()
 
         # adsr curve
-        self.drawLine(self._curve_data.attack_crv)  # attack
-        self.drawLine(self._curve_data.decay_crv)  # attack
-        self.drawLine(self._curve_data.sustain_crv)  # attack
-        self.drawLine(self._curve_data.release_crv)  # attack
+        self.drawLine(self._ADSR_curve_data.attack_crv)  # attack
+        self.drawLine(self._ADSR_curve_data.decay_crv)  # attack
+        self.drawLine(self._ADSR_curve_data.sustain_crv)  # attack
+        self.drawLine(self._ADSR_curve_data.release_crv)  # attack
 
         # adsr points
-        self.drawPoint(self._curve_data.attack_pt)  # attack
-        self.drawPoint(self._curve_data.decay_pt)  # attack
-        self.drawPoint(self._curve_data.sustain_pt)  # attack
-        self.drawPoint(self._curve_data.release_pt)  # attack
+        self.drawPoint(self._ADSR_curve_data.start_pt)  # attack
+        self.drawPoint(self._ADSR_curve_data.attack_pt)  # attack
+        self.drawPoint(self._ADSR_curve_data.decay_pt)  # attack
+        self.drawPoint(self._ADSR_curve_data.sustain_pt)  # attack
+        self.drawPoint(self._ADSR_curve_data.release_pt)  # attack
 
-    def drawLine(self, crv, color=Qt.black, width=2, pattern=Qt.SolidLine):
+        print (self._ADSR_curve_data.start_pt,
+               self._ADSR_curve_data.attack_pt,
+               self._ADSR_curve_data.decay_pt,
+               self._ADSR_curve_data.sustain_pt,
+               self._ADSR_curve_data.release_pt)
+
+    def drawLine(self, crv, pattern=Qt.SolidLine):
         painter = QtGui.QPainter(self)
-        # painter.scale(self.geometry().width()/self.width, self.geometry().height()/self.height)
-        painter.translate(0, self.geometry().height())
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        content = self.contentsMargins()
+        painter.translate(content.left(), self.geometry().height()-content.bottom())
         painter.scale( 1, -1 )
-        # painter.setViewport(0, 0, self.geometry().width(), self.geometry().height())
-        painter.setBrush(QtGui.QBrush(color, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(color, width, pattern))
+        # painter.scale( self.width_scale, -1 )
+
+        painter.setPen(QtGui.QPen(self.lineColor, self.lineWidth, pattern))
         painter.drawLine(crv)
         painter.end()
 
-    def drawPoint(self, pt, color=Qt.black, width=10, pattern=Qt.SolidLine):
+    def drawPoint(self, pt, size=9, pattern=Qt.SolidLine):
         painter = QtGui.QPainter(self)
-        painter.translate(0, self.geometry().height())
+
+        content = self.contentsMargins()
+        painter.translate(content.left(), self.geometry().height()-content.bottom())
         painter.scale( 1, -1 )
-        painter.setBrush(QtGui.QBrush(color, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(color, width, pattern))
-        painter.drawPoint(pt)
+
+        painter.setPen(QtGui.QPen(self.pointColor, 2, pattern))
+
+        rect = QtCore.QRect(0, 0, self.pointSize, self.pointSize)
+        rect.moveCenter(pt)
+        painter.drawRect(rect)
         painter.end()
 
     def drawBackground(self):
         painter = QtGui.QPainter(self)
-        painter.setPen(QtGui.QPen(Qt.black, 5, Qt.SolidLine))
-        painter.setBrush(QtGui.QBrush(Qt.green, Qt.SolidPattern))
+
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
+        painter.setPen(QtGui.QPen(self.borderColor, self.borderWidth, Qt.SolidLine))
         painter.drawRect(0, 0, self.geometry().width(), self.geometry().height())
+
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
+        painter.setPen(QtGui.QPen(self.contentBorderColor, self.contentBorderWidth, Qt.SolidLine))
+        painter.drawRect(self.contentsRect())
+
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
+        painter.setPen(QtGui.QPen(self.gridColor, 2, Qt.SolidLine))
+        grid_pace = QtCore.QPoint(0, int(self.contentsRect().height()/4))
+        painter.drawLine(self.contentsRect().bottomLeft() - grid_pace,
+                         self.contentsRect().bottomRight() - grid_pace)
+        painter.drawLine(self.contentsRect().bottomLeft() - grid_pace*2,
+                         self.contentsRect().bottomRight() - grid_pace*2)
+        painter.drawLine(self.contentsRect().bottomLeft() - grid_pace*3,
+                         self.contentsRect().bottomRight() - grid_pace*3)
+
+
+        painter.end()
 
