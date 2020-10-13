@@ -17,12 +17,18 @@ class CurveData(object):
         self.segment_time_max = 127
         self.height_max = 127
 
+        self.targetSize = QtCore.QSize(127.0, 127.0)
+
         self.segments = [[0,0]] * segment_num
         self._curve_pts = [[0,0]] * (segment_num+1)
 
     def __getitem__(self, i):
-        t = [p[0] for p in self.segments[:i]]
-        return sum(t), self.segments[i-1][1]
+        t_all = [p[0] for p in self.segments]
+        t = t_all[:i]
+        res = sum(t), self.segments[i - 1][1]
+        res_scaled = res[0] * self.targetSize.width()/sum(t_all),\
+                     res[1] * self.targetSize.height()/self.height_max
+        return res_scaled
 
     def __setitem__(self, key, value):
         print('set val', key, value)
@@ -157,7 +163,7 @@ class QMCAmpADSR(QWidget):
         self._ADSR_curve_data = CurveData_ADSR()
 
         self.backgroundColor = QtGui.QColor(4,21,37)
-        self.borderColor = Qt.blue
+        self.borderColor = Qt.black
         self.contentBorderColor = QtGui.QColor(74,86,100)
         self.lineColor = QtGui.QColor(59,118,168)
         self.pointColor = QtGui.QColor(255,247,197)
@@ -211,15 +217,15 @@ class QMCAmpADSR(QWidget):
 
     @decay_time.setter
     def decay_time(self, val):
-        self._ADSR_curve_data.decay[0] = val
+        self._ADSR_curve_data.decay = val
 
     @sustain_level.setter
     def sustain_level(self, val):
-        self._ADSR_curve_data.sustain[1] = val
+        self._ADSR_curve_data.sustain = val
 
     @release_time.setter
     def release_time(self, val):
-        self._ADSR_curve_data.release[0] = val
+        self._ADSR_curve_data.release = val
     # endregion
 
 
@@ -227,11 +233,7 @@ class QMCAmpADSR(QWidget):
         return QtCore.QSize(200, 167)
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-        geom = self.contentsRect()
-        # self._curve_data.width = geom.width()
-        # self._curve_data.height = geom.height()
-        self.width_scale = self.contentsRect().width()/self._ADSR_curve_data.width
-        self.heighth_scale = self.contentsRect().height()/self._ADSR_curve_data.height_max
+        self._ADSR_curve_data.targetSize = self.contentsRect()
 
 
     def paintEvent(self, e):
@@ -251,12 +253,6 @@ class QMCAmpADSR(QWidget):
         self.drawPoint(self._ADSR_curve_data.sustain_pt)  # attack
         self.drawPoint(self._ADSR_curve_data.release_pt)  # attack
 
-        print (self._ADSR_curve_data.start_pt,
-               self._ADSR_curve_data.attack_pt,
-               self._ADSR_curve_data.decay_pt,
-               self._ADSR_curve_data.sustain_pt,
-               self._ADSR_curve_data.release_pt)
-
     def drawLine(self, crv, pattern=Qt.SolidLine):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -264,7 +260,6 @@ class QMCAmpADSR(QWidget):
         content = self.contentsMargins()
         painter.translate(content.left(), self.geometry().height()-content.bottom())
         painter.scale( 1, -1 )
-        # painter.scale( self.width_scale, -1 )
 
         painter.setPen(QtGui.QPen(self.lineColor, self.lineWidth, pattern))
         painter.drawLine(crv)
@@ -304,7 +299,5 @@ class QMCAmpADSR(QWidget):
                          self.contentsRect().bottomRight() - grid_pace*2)
         painter.drawLine(self.contentsRect().bottomLeft() - grid_pace*3,
                          self.contentsRect().bottomRight() - grid_pace*3)
-
-
         painter.end()
 
