@@ -38,6 +38,13 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(widget)
 
+        self.ADSR_Widget.attack_time = 20
+        self.ADSR_Widget.attack_level = 127
+        self.ADSR_Widget.decay_time = 35
+        self.ADSR_Widget.sustain_level = 80
+        self.ADSR_Widget.release_time = 20
+
+
     def InitWindow(self):
         self.setWindowIcon(QtGui.QIcon("icon.png"))
         self.setWindowTitle(self.title)
@@ -49,6 +56,8 @@ def main():
 
     app = QApplication(sys.argv)
 
+    app.setStyle('windowsvista')
+    # print(QStyleFactory.keys())
     w = MainWindow()
     w.show()
 
