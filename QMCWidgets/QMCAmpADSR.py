@@ -157,8 +157,8 @@ class QMCAmpADSR(QWidget):
 
     #TODO: Add ghost curve
     #TODO: Shade (gradient) curve area
-    def __init__(self, *args, **kwargs):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
 
         self._ADSR_curve_data = CurveData_ADSR()
 
@@ -179,6 +179,17 @@ class QMCAmpADSR(QWidget):
             QtWidgets.QSizePolicy.MinimumExpanding,
             QtWidgets.QSizePolicy.MinimumExpanding
         )
+
+        self.label = QLabel(self.tr('ADSR Amplifier'))
+        self.label.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
+        self.label.setStyleSheet("""
+                font: 12pt "Terminal" ;
+                color: rgb(255, 255, 255);
+        """)
+
+        layout = QHBoxLayout(self)
+        layout.addWidget(self.label)
+        self.setLayout(layout)
 
     #region GETTERS
     @property
