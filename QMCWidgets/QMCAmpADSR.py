@@ -174,6 +174,8 @@ class QMCAmpADSR(QWidget):
         self.borderWidth = 3
         self.contentBorderWidth = 2
 
+        self.dragDistance = 10
+
         self.setContentsMargins(20,20,20,20)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.MinimumExpanding,
@@ -190,6 +192,27 @@ class QMCAmpADSR(QWidget):
         layout = QHBoxLayout(self)
         layout.addWidget(self.label)
         self.setLayout(layout)
+
+    def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
+        content = self.contentsMargins()
+        trs = QtGui.QTransform()
+        trs.translate(-content.left(), self.geometry().height() - content.bottom())
+        trs.scale(1, -1)
+        pos = trs.map(a0.pos())
+
+        attack_offset = (self._ADSR_curve_data.attack_pt - pos).manhattanLength()
+        decay_offset  = (self._ADSR_curve_data.decay_pt  - pos).manhattanLength()
+        sustain_offset = (self._ADSR_curve_data.sustain_pt - pos).manhattanLength()
+
+        # isAttackClicked = click_offset.manhattanLength() < 10
+
+        data = zip((attack_offset, decay_offset, sustain_offset), ('attack', 'decay', 'sustain'))
+        closest = sorted(data, key=lambda x: x[0])[0]
+
+        if closest[0] < 10:
+            print ('---------------')
+            print(f'Clicked: {closest[1]}')
+            print(pos)
 
     #region GETTERS
     @property
