@@ -176,6 +176,7 @@ class QMCAmpADSR(QWidget):
 
         self.dragDistance = 10
 
+        self.setMouseTracking(True)
         self.setContentsMargins(20,20,20,20)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.MinimumExpanding,
@@ -183,6 +184,7 @@ class QMCAmpADSR(QWidget):
         )
 
         self.label = QLabel(self.tr('ADSR Amplifier'))
+        self.label.setMouseTracking(True)
         self.label.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
         self.label.setStyleSheet("""
                 font: 12pt "Terminal" ;
@@ -194,11 +196,7 @@ class QMCAmpADSR(QWidget):
         self.setLayout(layout)
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
-        content = self.contentsMargins()
-        trs = QtGui.QTransform()
-        trs.translate(-content.left(), self.geometry().height() - content.bottom())
-        trs.scale(1, -1)
-        pos = trs.map(a0.pos())
+        pos = self.contentTransform.map(a0.pos())
 
         attack_offset = (self._ADSR_curve_data.attack_pt - pos).manhattanLength()
         decay_offset  = (self._ADSR_curve_data.decay_pt  - pos).manhattanLength()
@@ -213,6 +211,18 @@ class QMCAmpADSR(QWidget):
             print ('---------------')
             print(f'Clicked: {closest[1]}')
             print(pos)
+
+    def mouseMoveEvent(self, a0: QtGui.QMouseEvent) -> None:
+        pos = self.contentTransform.map(a0.pos())
+        self.label.setText(self.inRangeCurvePoint_mapped(pos)['name'])
+
+    @property
+    def contentTransform(self):
+        content = self.contentsMargins()
+        trs = QtGui.QTransform()
+        trs.translate(-content.left(), self.geometry().height() - content.bottom())
+        trs.scale(1, -1)
+        return trs
 
     #region GETTERS
     @property
@@ -335,3 +345,22 @@ class QMCAmpADSR(QWidget):
                          self.contentsRect().bottomRight() - grid_pace*3)
         painter.end()
 
+    def inRangeCurvePoint_mapped(self, pos, range=10):
+        attack_pt = self._ADSR_curve_data.attack_pt
+        decay_pt  = self._ADSR_curve_data.decay_pt
+        sustain_pt = self._ADSR_curve_data.sustain_pt
+
+        attack_offset = (attack_pt - pos).manhattanLength()
+        decay_offset  = (decay_pt  - pos).manhattanLength()
+        sustain_offset = (sustain_pt - pos).manhattanLength()
+
+        data_dicts = ({'name': 'attack', 'offset': attack_offset, 'coord': attack_pt},
+                      {'name': 'decay', 'offset': decay_offset, 'coord': decay_pt},
+                      {'name': 'sustain', 'offset': sustain_offset, 'coord': sustain_pt})
+
+        closest = sorted(data_dicts, key=lambda x: x['offset'])[0]
+
+        if closest['offset'] < range:
+            return closest
+        else:
+            return {'name': '', 'offset': None, 'coord': None}
