@@ -130,3 +130,5 @@ dmypy.json
 .pyre/
 Makefile
 installed.txt
+!/installed.txt
+!/Makefile
