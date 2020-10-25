@@ -1,8 +1,7 @@
-import self as self
 from PyQt5.QtWidgets import *
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt
-from typing import overload
+import typing
 
 
 class PointData(QtCore.QPoint):
@@ -65,17 +64,37 @@ class QCurveData(QtGui.QPolygon):
         self.point_names = []
 
         self._check_point_names()
-        self.print_data()
+        # self.print_data()
 
     def addPoint(self, x: int, y: int, name:str=None):
         pt = QtCore.QPoint(x, y)
         self.append(pt)
         self._append_point_name(name)
 
-    def addSegment(self, x: int, y: int, name:str=None):
-        self.addPoint(self.last().x() + x,
-                      self.last().y() + y,
-                      name)
+    @typing.overload
+    def addSegment(self, x: int, y: int, name:str=None): ...
+
+    @typing.overload
+    def addSegment(self, pt:QtCore.QPoint, name:str=None): ...
+
+    def addSegment(self, *args, name:str=None):
+        pt = args[0] if isinstance(args[0], QtCore.QPoint) else None
+        x  = args[0] if isinstance(args[0], int) else None
+        y  = args[1] if len(args)>1 and isinstance(args[1], int) else None
+        name = args[-1] if isinstance(args[-1], str) else name
+
+        last = self.last() if self.size() else QtCore.QPoint()
+
+        if x is not None and y is not None:
+            self.addPoint(last.x() + x,
+                          last.y() + y,
+                          name)
+        elif pt is not None:
+            self.addPoint(last.x() + pt.x(),
+                          last.y() + pt.y(),
+                          name)
+        else:
+            raise TypeError('Add segments by two integers or a QPoint !!')
 
     def getPointByName(self, name:str):
         if name in self.point_names:
@@ -231,6 +250,8 @@ class QMCAmpADSR(QWidget):
         self.lineColor = QtGui.QColor(59, 118, 168)
         self.pointColor = QtGui.QColor(255, 247, 197)
         self.gridColor = QtGui.QColor(74, 86, 100, 127)
+        self.background_gradColor_start = QtGui.QColor(74, 86, 100, alpha=0)
+        self.background_gradColor_stop = QtGui.QColor(74, 86, 100, alpha=200)
 
         self.lineWidth = 3
         self.pointSize = 3
@@ -261,6 +282,15 @@ class QMCAmpADSR(QWidget):
         layout = QHBoxLayout(self)
         layout.addWidget(self.label)
         self.setLayout(layout)
+
+        # adsr as polygon
+        self.poly = QCurveData()
+        self.poly.addSegment(0,0, 'start')
+        self.poly.addSegment(64,127, 'attack')
+        self.poly.addSegment(64,-64, 'decay')
+        self.poly.addSegment(72,0, 'sustain')
+        self.poly.addSegment(63,-63, 'release')
+
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
         self.mouse_pressed = True
@@ -372,6 +402,10 @@ class QMCAmpADSR(QWidget):
         # background
         self.drawBackground()
 
+        # adsr as polygon
+        # self.drawPoly(self.poly)
+        self.drawOpenPoly(self.poly)
+
         # adsr curve
         self.drawLine(self._ADSR_curve_data.attack_crv)  # attack
         self.drawLine(self._ADSR_curve_data.decay_crv)  # attack
@@ -412,6 +446,38 @@ class QMCAmpADSR(QWidget):
 
         painter.setPen(QtGui.QPen(self.lineColor, self.lineWidth, pattern))
         painter.drawLine(crv)
+        painter.end()
+
+    def drawOpenPoly(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        content = self.contentsMargins()
+        painter.translate(content.left(), self.geometry().height() - content.bottom())  # Shift to Content
+        painter.scale(1, -1)  # flip
+
+        painter.setPen(QtGui.QPen(self.lineColor, self.lineWidth, pattern))
+
+        pt_pairs = list(zip(poly, poly[1:] + poly[:1]))
+        painter.drawLines(*pt_pairs)
+
+        painter.end()
+
+    def drawPoly(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        content = self.contentsMargins()
+        painter.translate(content.left(), self.geometry().height()-content.bottom())  # Shift to Content
+        painter.scale(1, -1)  # flip
+
+        lin_grad = QtGui.QLinearGradient(poly.boundingRect().bottomLeft(), poly.boundingRect().topLeft())
+        lin_grad.setColorAt(0.3, self.background_gradColor_start)
+        lin_grad.setColorAt(1.0, self.background_gradColor_stop)
+
+        painter.setBrush(QtGui.QBrush(lin_grad))
+        painter.setPen(QtGui.QPen(self.lineColor, self.lineWidth, pattern))
+        painter.drawPolygon(poly)
         painter.end()
 
     def drawRectangle(self, center_pt, size=11, pattern=Qt.SolidLine):
