@@ -425,21 +425,19 @@ class QMCAmpADSR(QWidget):
         self.drawBackground()
 
         # adsr as polygon
-        self.drawPoly(self.poly.stretchedTo(self.contentsRect()))
-        # self.drawOpenPoly(self.poly)
+        poly_fitted = self.poly.stretchedTo(self.contentsRect())
+        self.drawPoly_background(poly_fitted)
+        self.drawOpenPoly(poly_fitted)
 
         # adsr curve
-        self.drawLine(self._ADSR_curve_data.attack_crv)  # attack
-        self.drawLine(self._ADSR_curve_data.decay_crv)  # attack
-        self.drawLine(self._ADSR_curve_data.sustain_crv)  # attack
-        self.drawLine(self._ADSR_curve_data.release_crv)  # attack
+        # self.drawLine(self._ADSR_curve_data.attack_crv)  # attack
+        # self.drawLine(self._ADSR_curve_data.decay_crv)  # attack
+        # self.drawLine(self._ADSR_curve_data.sustain_crv)  # attack
+        # self.drawLine(self._ADSR_curve_data.release_crv)  # attack
 
         # adsr points
-        self.drawPoint(self._ADSR_curve_data.start_pt)  # attack
-        self.drawPoint(self._ADSR_curve_data.attack_pt)  # attack
-        self.drawPoint(self._ADSR_curve_data.decay_pt)  # attack
-        self.drawPoint(self._ADSR_curve_data.sustain_pt)  # attack
-        self.drawPoint(self._ADSR_curve_data.release_pt)  # attack
+        for pt in poly_fitted:
+            self.drawPoint(pt)
 
         if self.pt_hasFocus:
             self.drawRectangle(self.focus_pt)
@@ -480,12 +478,14 @@ class QMCAmpADSR(QWidget):
 
         painter.setPen(QtGui.QPen(self.lineColor, self.lineWidth, pattern))
 
-        pt_pairs = list(zip(poly, poly[1:] + poly[:1]))
+        pt_pairs = list()
+        for i, p in enumerate(poly[:-1]):
+            pt_pairs.extend([poly[i], poly[i+1]])
         painter.drawLines(*pt_pairs)
 
         painter.end()
 
-    def drawPoly(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
+    def drawPoly_background(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
@@ -498,7 +498,7 @@ class QMCAmpADSR(QWidget):
         lin_grad.setColorAt(1.0, self.background_gradColor_stop)
 
         painter.setBrush(QtGui.QBrush(lin_grad))
-        painter.setPen(QtGui.QPen(self.lineColor, self.lineWidth, pattern))
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, alpha=0), self.lineWidth, pattern))
         painter.drawPolygon(poly)
         painter.end()
 
@@ -541,6 +541,29 @@ class QMCAmpADSR(QWidget):
         painter.end()
 
     def inRangeCurvePoint_mapped(self, pos, range=10):
+        start_pt, attack_pt, decay_pt, sustain_pt, end_pt = \
+            self.poly.stretchedTo(self.contentsRect())
+
+        start_offset = (start_pt - pos).manhattanLength()
+        attack_offset = (attack_pt - pos).manhattanLength()
+        decay_offset = (decay_pt  - pos).manhattanLength()
+        sustain_offset = (sustain_pt - pos).manhattanLength()
+        end_offset = (end_pt - pos).manhattanLength()
+
+        data_dicts = ({'name': 'start', 'offset': start_offset, 'coord': start_pt},
+                      {'name': 'attack', 'offset': attack_offset, 'coord': attack_pt},
+                      {'name': 'decay', 'offset': decay_offset, 'coord': decay_pt},
+                      {'name': 'sustain', 'offset': sustain_offset, 'coord': sustain_pt},
+                      {'name': 'end', 'offset': end_offset, 'coord': end_pt})
+
+        closest = sorted(data_dicts, key=lambda x: x['offset'])[0]
+
+        if closest['offset'] < range:
+            return closest
+        else:
+            return {'name': '', 'offset': None, 'coord': None}
+
+    def inRangeCurvePoint_mapped_OLD(self, pos, range=10):
         start_pt = self._ADSR_curve_data.start_pt
         attack_pt = self._ADSR_curve_data.attack_pt
         decay_pt = self._ADSR_curve_data.decay_pt
