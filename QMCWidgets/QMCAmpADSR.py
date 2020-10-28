@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt
 import typing
-
+import copy
 
 class PointData(QtCore.QPoint):
     def __init__(self, time=0, value=0):
@@ -293,16 +293,16 @@ class QMCAmpADSR(QWidget):
             QtWidgets.QSizePolicy.MinimumExpanding
         )
 
-        self.label = QLabel(self.tr('ADSR Amplifier'))
-        self.label.setMouseTracking(True)
-        self.label.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
-        self.label.setStyleSheet("""
+        self.curve_label = QLabel(self.tr('ADSR Amplifier'))
+        self.curve_label.setMouseTracking(True)
+        self.curve_label.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
+        self.curve_label.setStyleSheet("""
                 font: 12pt "Terminal" ;
                 color: rgb(255, 255, 255);
         """)
 
         layout = QHBoxLayout(self)
-        layout.addWidget(self.label)
+        layout.addWidget(self.curve_label)
         self.setLayout(layout)
 
         # adsr as polygon
@@ -318,7 +318,7 @@ class QMCAmpADSR(QWidget):
         self.mouse_pressed = True
         pos = self.contentTransform.map(a0.pos())
         in_range_data = self.inRangeCurvePoint_mapped(pos)
-        if not self.pt_dragging and in_range_data['coord']:
+        if not self.pt_dragging and in_range_data['name']:
             print('---------------')
             print(f'Clicked: {in_range_data["name"]}')
             print(pos)
@@ -327,17 +327,14 @@ class QMCAmpADSR(QWidget):
     def mouseMoveEvent(self, a0: QtGui.QMouseEvent) -> None:
         pos = self.contentTransform.map(a0.pos())
         in_range_data = self.inRangeCurvePoint_mapped(pos)
-        self.label.setText(f'{in_range_data["name"].capitalize()}\n [ {pos.x():>3},{pos.y():>3} ]')
 
-        if in_range_data['coord']:
+        if in_range_data['name']:
             self.pt_hasFocus = True
             self.focus_pt = in_range_data['coord']
-            self.update()
         else:
             # update if hasFocus changed
             if self.pt_hasFocus:
                 self.pt_hasFocus = False
-                self.update()
 
         if self.mouse_pressed and self.pt_dragging is not None:
             pos_fixed = [min(self.contentsRect().width(),   max(0, pos.x())),
@@ -352,7 +349,12 @@ class QMCAmpADSR(QWidget):
             if self.pt_dragging['name'] == 'sustain':
                 self.decay_time = min(127, self.contentsRect().width() - pos_fixed.x())
                 self.sustain_level = pos_fixed.y()
-            self.update()
+
+        label_data = [str(in_range_data["name"]).capitalize(),
+                      pos.x(),
+                      pos.y()]
+        self.curve_label.setText('{}\n [ {:>3},{:>3} ]'.format(*label_data))
+        self.update()
 
     def mouseReleaseEvent(self, a0: QtGui.QMouseEvent) -> None:
         self.mouse_pressed = False
@@ -429,15 +431,8 @@ class QMCAmpADSR(QWidget):
         self.drawPoly_background(poly_fitted)
         self.drawOpenPoly(poly_fitted)
 
-        # adsr curve
-        # self.drawLine(self._ADSR_curve_data.attack_crv)  # attack
-        # self.drawLine(self._ADSR_curve_data.decay_crv)  # attack
-        # self.drawLine(self._ADSR_curve_data.sustain_crv)  # attack
-        # self.drawLine(self._ADSR_curve_data.release_crv)  # attack
-
         # adsr points
-        for pt in poly_fitted:
-            self.drawPoint(pt)
+        list(map(self.drawPoint, poly_fitted))
 
         if self.pt_hasFocus:
             self.drawRectangle(self.focus_pt)
@@ -503,6 +498,7 @@ class QMCAmpADSR(QWidget):
         painter.end()
 
     def drawRectangle(self, center_pt, size=11, pattern=Qt.SolidLine):
+        print("FOCUSED", center_pt)
         trs = self.contentTransform.inverted()[0]
         center_pt = trs.map(center_pt)
 
@@ -541,27 +537,22 @@ class QMCAmpADSR(QWidget):
         painter.end()
 
     def inRangeCurvePoint_mapped(self, pos, range=10):
-        start_pt, attack_pt, decay_pt, sustain_pt, end_pt = \
-            self.poly.stretchedTo(self.contentsRect())
+        def mdist(pt): return (pt - pos).manhattanLength()
 
-        start_offset = (start_pt - pos).manhattanLength()
-        attack_offset = (attack_pt - pos).manhattanLength()
-        decay_offset = (decay_pt  - pos).manhattanLength()
-        sustain_offset = (sustain_pt - pos).manhattanLength()
-        end_offset = (end_pt - pos).manhattanLength()
+        pts = list(self.poly.stretchedTo(self.contentsRect()))
+        pt_names = "start", "attack", "decay", "sustain", "end"
+        offsets = list(map(mdist, pts))
 
-        data_dicts = ({'name': 'start', 'offset': start_offset, 'coord': start_pt},
-                      {'name': 'attack', 'offset': attack_offset, 'coord': attack_pt},
-                      {'name': 'decay', 'offset': decay_offset, 'coord': decay_pt},
-                      {'name': 'sustain', 'offset': sustain_offset, 'coord': sustain_pt},
-                      {'name': 'end', 'offset': end_offset, 'coord': end_pt})
+        closest_i = offsets.index(sorted(offsets)[0])
 
-        closest = sorted(data_dicts, key=lambda x: x['offset'])[0]
-
-        if closest['offset'] < range:
-            return closest
+        if offsets[closest_i] < range:
+            return {'name': pt_names[closest_i],
+                    'offset': offsets[closest_i],
+                    'coord': pts[closest_i]}
         else:
-            return {'name': '', 'offset': None, 'coord': None}
+            return {'name': '',
+                    'offset': 9999,
+                    'coord': QtCore.QPoint(99999, 99999)}
 
     def inRangeCurvePoint_mapped_OLD(self, pos, range=10):
         start_pt = self._ADSR_curve_data.start_pt
