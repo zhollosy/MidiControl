@@ -9,7 +9,22 @@ class PointData(QtCore.QPoint):
         super().__init__(time, value)
         self.time = time
         self.value = value
+    
+    @property
+    def time(self):
+        return self.x
+    
+    @time.setter
+    def time(self, value):
+        self.setX(value)
 
+    @property
+    def value(self):
+        return self.x
+    
+    @value.setter
+    def value(self, value):
+        self.setX(value)
 
 class CurveData(object):
     def __init__(self, segment_num):
@@ -61,6 +76,7 @@ class QCurveData(QtGui.QPolygon):
     """
     def __init__(self):
         super(QCurveData, self).__init__()
+        self.max_height = 128
         self.point_names = []
 
         self._check_point_names()
@@ -128,6 +144,12 @@ class QCurveData(QtGui.QPolygon):
         for i in range(len(self.point_names), self.size()+1):
             self._append_point_name()
 
+    def stretchedTo(self, target_size:QtCore.QSize):
+        scale_w = target_size.width() / self.boundingRect().width()
+        scale_h = target_size.height() / self.max_height
+        trs = QtGui.QTransform()
+        trs.scale(scale_w, scale_h)
+        return trs.map(self)
 
 
 class CurveDataADSR(CurveData):
@@ -403,8 +425,8 @@ class QMCAmpADSR(QWidget):
         self.drawBackground()
 
         # adsr as polygon
-        # self.drawPoly(self.poly)
-        self.drawOpenPoly(self.poly)
+        self.drawPoly(self.poly.stretchedTo(self.contentsRect()))
+        # self.drawOpenPoly(self.poly)
 
         # adsr curve
         self.drawLine(self._ADSR_curve_data.attack_crv)  # attack
