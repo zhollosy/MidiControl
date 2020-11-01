@@ -26,46 +26,6 @@ class PointData(QtCore.QPoint):
     def value(self, value):
         self.setX(value)
 
-class CurveData(object):
-    def __init__(self, segment_num):
-        super().__init__()
-
-        self.segment_time_max = 127
-        self.height_max = 127
-
-        self.targetSize = QtCore.QSize(127, 127)
-
-        self.segments = [[0, 0]] * segment_num
-        self._curve_pts = [[0, 0]] * (segment_num+1)
-
-    def __getitem__(self, i):
-        t_all = [p[0] for p in self.segments]
-        t = t_all[:i]
-        res = sum(t), self.segments[i - 1][1]
-        res_scaled = (res[0] * self.targetSize.width()/sum(t_all),
-                      res[1] * self.targetSize.height()/self.height_max)
-        return res_scaled
-
-    def __setitem__(self, key, value):
-        self._curve_pts[key] = value
-
-    def __len__(self):
-        return len(self._curve_pts)
-
-    def __delitem__(self, key):
-        del self._curve_pts[key]
-        del self.segments[key]
-
-    def setSegment(self, i, delta_time, level):
-        self.segments[i] = [delta_time, level]
-
-    def line(self, i):
-        return self[1], self[i+1]
-
-    @property
-    def width(self):
-        return self[-1][0]
-
 
 class QCurveData(QtGui.QPolygon):
     """ Curve data stored in QPolygon and some features more
@@ -99,7 +59,7 @@ class QCurveData(QtGui.QPolygon):
         y  = args[1] if len(args)>1 and isinstance(args[1], int) else None
         name = args[-1] if isinstance(args[-1], str) else name
 
-        last = self.last() if self.size() else QtCore.QPoint()
+        last = QtCore.QPoint() if self.isEmpty() else self.last()
 
         if x is not None and y is not None:
             self.addPoint(last.x() + x,
@@ -152,107 +112,8 @@ class QCurveData(QtGui.QPolygon):
         return trs.map(self)
 
 
-class CurveDataADSR(CurveData):
-    segment_num = 4
-    max_level = 127
-
-    def __init__(self):
-        super().__init__(CurveDataADSR.segment_num)
-
-        self.attack = 20, 127
-        self.decay = 35
-        self.sustain = 80
-        self.release = 20
-
-    # region PROPS
-    @property
-    def attack(self) -> [int, int]:
-        return self.segments[0]
-
-    @attack.setter
-    def attack(self, val):
-        self.setSegment(0, *val)
-
-    @property
-    def decay(self) -> int:
-        return self.segments[1][0]
-
-    @decay.setter
-    def decay(self, val):
-        self.setSegment(1, val, self.sustain)
-
-    @property
-    def sustain(self) -> int:
-        return self.segments[2][1]
-
-    @sustain.setter
-    def sustain(self, val):
-        sustain_time = self.width + self.segment_time_max / self.segment_num
-        self.setSegment(2, max(30, sustain_time), val)
-
-    @property
-    def release(self) -> int:
-        return self.segments[3][0]
-
-    @release.setter
-    def release(self, val):
-        self.setSegment(3, val, 0)
-    # endregion
-
-    # region POINTS
-    @property
-    def start_pt(self):
-        return QtCore.QPoint(0, 0)
-
-    @property
-    def attack_pt(self):
-        return QtCore.QPoint(*self[1])
-
-    @property
-    def decay_pt(self):
-        return QtCore.QPoint(*self[2])
-
-    @property
-    def sustain_pt(self):
-        return QtCore.QPoint(*self[3])
-
-    @property
-    def release_pt(self):
-        return QtCore.QPoint(*self[4])
-
-    @property
-    def end_pt(self):
-        return QtCore.QPoint(*self[4])
-    # endregion
-
-    # region CURVES
-    @property
-    def attack_crv(self):
-        pt_1 = self.start_pt
-        pt_2 = self.attack_pt
-        return QtCore.QLine(pt_1, pt_2)
-
-    @property
-    def decay_crv(self):
-        pt_1 = self.attack_pt
-        pt_2 = self.decay_pt
-        return QtCore.QLine(pt_1, pt_2)
-
-    @property
-    def sustain_crv(self):
-        pt_1 = self.decay_pt
-        pt_2 = self.sustain_pt
-        return QtCore.QLine(pt_1, pt_2)
-
-    @property
-    def release_crv(self):
-        pt_1 = self.sustain_pt
-        pt_2 = self.release_pt
-        return QtCore.QLine(pt_1, pt_2)
-    # endregion
-
-
 class CurveView(QWidget):
+curveclass CurveView(QWidget):
     pass
 
 
@@ -263,8 +124,6 @@ class QMCAmpADSR(QWidget):
     # TODO: Shade (gradient) curve area
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-
-        self._ADSR_curve_data = CurveDataADSR()
 
         self.backgroundColor = QtGui.QColor(4, 21, 37)
         self.borderColor = Qt.black
@@ -371,33 +230,33 @@ class QMCAmpADSR(QWidget):
     # region GETTERS
     @property
     def attack_time(self):
-        return self._ADSR_curve_data.attack[0]
+        return self.poly.attack.x()
 
     @property
     def attack_level(self):
-        return self._ADSR_curve_data.attack[1]
+        return self.poly.attack.y()
 
     @property
     def decay_time(self):
-        return self._ADSR_curve_data.decay
+        return self.poly.decay.x() - self.poly.attack.x()
 
     @property
     def sustain_time(self):
-        return self._ADSR_curve_data.sustain[0]
+        return self.poly.sustain.x() - self.poly.decay.x()
 
     @property
     def sustain_level(self):
-        return self._ADSR_curve_data.sustain
+        return self.poly.sustain.y()
 
     @property
     def release_time(self):
-        return self._ADSR_curve_data.release[0]
+        return self.poly.release.x() - self.poly.sustain.x()
     # endregion
 
     # region SETTERS
     @attack_time.setter
     def attack_time(self, val):
-        self._ADSR_curve_data.attack[0] = val
+        self.poly.attack.setX(val)
 
     @attack_level.setter
     def attack_level(self, val):
@@ -554,28 +413,3 @@ class QMCAmpADSR(QWidget):
                     'offset': 9999,
                     'coord': QtCore.QPoint(99999, 99999)}
 
-    def inRangeCurvePoint_mapped_OLD(self, pos, range=10):
-        start_pt = self._ADSR_curve_data.start_pt
-        attack_pt = self._ADSR_curve_data.attack_pt
-        decay_pt = self._ADSR_curve_data.decay_pt
-        sustain_pt = self._ADSR_curve_data.sustain_pt
-        end_pt = self._ADSR_curve_data.end_pt
-
-        start_offset = (start_pt - pos).manhattanLength()
-        attack_offset = (attack_pt - pos).manhattanLength()
-        decay_offset = (decay_pt  - pos).manhattanLength()
-        sustain_offset = (sustain_pt - pos).manhattanLength()
-        end_offset = (end_pt - pos).manhattanLength()
-
-        data_dicts = ({'name': 'start', 'offset': start_offset, 'coord': start_pt},
-                      {'name': 'attack', 'offset': attack_offset, 'coord': attack_pt},
-                      {'name': 'decay', 'offset': decay_offset, 'coord': decay_pt},
-                      {'name': 'sustain', 'offset': sustain_offset, 'coord': sustain_pt},
-                      {'name': 'end', 'offset': end_offset, 'coord': end_pt})
-
-        closest = sorted(data_dicts, key=lambda x: x['offset'])[0]
-
-        if closest['offset'] < range:
-            return closest
-        else:
-            return {'name': '', 'offset': None, 'coord': None}
