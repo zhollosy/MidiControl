@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt
 import typing
-import copy
+
 
 class PointData(QtCore.QPoint):
     def __init__(self, time=0, value=0):
@@ -39,24 +39,26 @@ class QCurveData(QtGui.QPolygon):
         self.max_height = 128
         self.point_names = []
 
+        self.target_size = QtCore.QSize(127, 127)
+
         self._check_point_names()
         # self.print_data()
 
-    def addPoint(self, x: int, y: int, name:str=None):
+    def addPoint(self, x: int, y: int, name: str = None):
         pt = QtCore.QPoint(x, y)
         self.append(pt)
         self._append_point_name(name)
 
     @typing.overload
-    def addSegment(self, x: int, y: int, name:str=None): ...
+    def addSegment(self, x: int, y: int, name: str = None): ...
 
     @typing.overload
-    def addSegment(self, pt:QtCore.QPoint, name:str=None): ...
+    def addSegment(self, pt: QtCore.QPoint, name: str = None): ...
 
-    def addSegment(self, *args, name:str=None):
+    def addSegment(self, *args, name: str = None):
         pt = args[0] if isinstance(args[0], QtCore.QPoint) else None
         x  = args[0] if isinstance(args[0], int) else None
-        y  = args[1] if len(args)>1 and isinstance(args[1], int) else None
+        y  = args[1] if len(args) > 1 and isinstance(args[1], int) else None
         name = args[-1] if isinstance(args[-1], str) else name
 
         last = QtCore.QPoint() if self.isEmpty() else self.last()
@@ -72,7 +74,7 @@ class QCurveData(QtGui.QPolygon):
         else:
             raise TypeError('Add segments by two integers or a QPoint !!')
 
-    def getPointByName(self, name:str):
+    def getPointByName(self, name: str):
         if name in self.point_names:
             i = self.point_names.index(name)
             return self[i]
@@ -82,17 +84,16 @@ class QCurveData(QtGui.QPolygon):
         for i in range(self.size()):
             print(i, f"{self.point_names[i]:<10}", self.point(i))
 
-    def _append_point_name(self, name:str=None):
+    def _append_point_name(self, name: str = None):
         if name:
             self.point_names.append(name)
-            i = self.size() - 1
             setattr(self, name, self.getPointByName(name))
         else:
             i = len(self.point_names)
             point_name = f'point_{i:02d}'
             self.point_names.append(point_name)
 
-    def _rename_attr(self, old_name:str, new_name:str):
+    def _rename_attr(self, old_name: str, new_name: str):
         i = self.point_names.index(old_name)
         self.point_names[i] = new_name
 
@@ -100,20 +101,27 @@ class QCurveData(QtGui.QPolygon):
         setattr(self, new_name, self.getPointByName(new_name))
 
     def _check_point_names(self):
-        if self.size() == len(self.point_names): return
+        if self.size() == len(self.point_names):
+            return
         for i in range(len(self.point_names), self.size()+1):
             self._append_point_name()
 
-    def stretchedTo(self, target_size:QtCore.QSize):
+    def stretchedTo(self, target_size: QtCore.QSize):
         scale_w = target_size.width() / self.boundingRect().width()
         scale_h = target_size.height() / self.max_height
         trs = QtGui.QTransform()
         trs.scale(scale_w, scale_h)
         return trs.map(self)
 
+    def stretched(self):
+        scale_w = self.target_size.width() / self.boundingRect().width()
+        scale_h = self.target_size.height() / self.max_height
+        trs = QtGui.QTransform()
+        trs.scale(scale_w, scale_h)
+        return trs.map(self)
+
 
 class CurveView(QWidget):
-curveclass CurveView(QWidget):
     pass
 
 
@@ -166,12 +174,13 @@ class QMCAmpADSR(QWidget):
 
         # adsr as polygon
         self.poly = QCurveData()
-        self.poly.addSegment(0,0, 'start')
-        self.poly.addSegment(64,127, 'attack')
-        self.poly.addSegment(64,-64, 'decay')
-        self.poly.addSegment(72,0, 'sustain')
-        self.poly.addSegment(63,-63, 'release')
+        self.poly.addSegment(0, 0, 'start')
+        self.poly.addSegment(64, 127, 'attack')
+        self.poly.addSegment(64, -64, 'decay')
+        self.poly.addSegment(72, 0, 'sustain')
+        self.poly.addSegment(63, -63, 'release')
 
+        self.poly.target_size = self.contentsRect().size()
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
         self.mouse_pressed = True
@@ -200,8 +209,8 @@ class QMCAmpADSR(QWidget):
                          min(127,                           max(0, pos.y()))]
             pos_fixed = QtCore.QPoint(*pos_fixed)
             if self.pt_dragging['name'] == 'attack':
-                self._ADSR_curve_data.attack = [pos_fixed.x(), pos_fixed.y()]
-                # self.attack_level = pos_fixed.y()
+                self.attack_time = pos_fixed.x()
+                self.attack_level = pos_fixed.y()
             if self.pt_dragging['name'] == 'decay':
                 self.decay_time = max(self.attack_time, pos_fixed.x() - self.attack_time)
                 self.sustain_level = pos_fixed.y()
@@ -260,33 +269,34 @@ class QMCAmpADSR(QWidget):
 
     @attack_level.setter
     def attack_level(self, val):
-        self._ADSR_curve_data.attack[1] = val
+        self.poly.attack.setY(val)
 
     @decay_time.setter
     def decay_time(self, val):
-        self._ADSR_curve_data.decay = val
+        self.poly.decay.setX(self.attack_time + val)
 
     @sustain_level.setter
     def sustain_level(self, val):
-        self._ADSR_curve_data.sustain = val
+        self.poly.decay.setY(val)
+        self.poly.sustain.setY(val)
 
     @release_time.setter
     def release_time(self, val):
-        self._ADSR_curve_data.release = val
+        self.poly.release.setX(self.sustain_time + val)
     # endregion
 
     def sizeHint(self):
         return QtCore.QSize(200, 167)
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-        self._ADSR_curve_data.targetSize = self.contentsRect()
+        self.poly.target_size = self.contentsRect().size()
 
     def paintEvent(self, e):
         # background
         self.drawBackground()
 
         # adsr as polygon
-        poly_fitted = self.poly.stretchedTo(self.contentsRect())
+        poly_fitted = self.poly.stretched()
         self.drawPoly_background(poly_fitted)
         self.drawOpenPoly(poly_fitted)
 
@@ -296,7 +306,7 @@ class QMCAmpADSR(QWidget):
         if self.pt_hasFocus:
             self.drawRectangle(self.focus_pt)
 
-    def drawPoint(self, pt, size=9, pattern=Qt.SolidLine):
+    def drawPoint(self, pt, pattern=Qt.SolidLine):
         painter = QtGui.QPainter(self)
 
         content = self.contentsMargins()
@@ -322,7 +332,7 @@ class QMCAmpADSR(QWidget):
         painter.drawLine(crv)
         painter.end()
 
-    def drawOpenPoly(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
+    def drawOpenPoly(self, poly: QtGui.QPolygon, pattern=Qt.SolidLine):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
@@ -339,7 +349,7 @@ class QMCAmpADSR(QWidget):
 
         painter.end()
 
-    def drawPoly_background(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
+    def drawPoly_background(self, poly: QtGui.QPolygon, pattern=Qt.SolidLine):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
@@ -357,7 +367,6 @@ class QMCAmpADSR(QWidget):
         painter.end()
 
     def drawRectangle(self, center_pt, size=11, pattern=Qt.SolidLine):
-        print("FOCUSED", center_pt)
         trs = self.contentTransform.inverted()[0]
         center_pt = trs.map(center_pt)
 
@@ -395,16 +404,16 @@ class QMCAmpADSR(QWidget):
                          self.contentsRect().bottomRight() - grid_pace*3)
         painter.end()
 
-    def inRangeCurvePoint_mapped(self, pos, range=10):
+    def inRangeCurvePoint_mapped(self, pos, proximity=10):
         def mdist(pt): return (pt - pos).manhattanLength()
 
-        pts = list(self.poly.stretchedTo(self.contentsRect()))
+        pts = list(self.poly.stretched())
         pt_names = "start", "attack", "decay", "sustain", "end"
         offsets = list(map(mdist, pts))
 
         closest_i = offsets.index(sorted(offsets)[0])
 
-        if offsets[closest_i] < range:
+        if offsets[closest_i] < proximity:
             return {'name': pt_names[closest_i],
                     'offset': offsets[closest_i],
                     'coord': pts[closest_i]}
@@ -412,4 +421,3 @@ class QMCAmpADSR(QWidget):
             return {'name': '',
                     'offset': 9999,
                     'coord': QtCore.QPoint(99999, 99999)}
-
