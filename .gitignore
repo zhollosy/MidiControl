@@ -103,6 +103,7 @@ celerybeat.pid
 
 # Environments
 .idea
+.obsidian
 .env
 .venv
 env/
