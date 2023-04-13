@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt
-import typing
+from typing import overload
 
 
 class PointData(QtCore.QPoint):
@@ -49,10 +49,10 @@ class QCurveData(QtGui.QPolygon):
         self.append(pt)
         self._append_point_name(name)
 
-    @typing.overload
+    @overload
     def addSegment(self, x: int, y: int, name: str = None): ...
 
-    @typing.overload
+    @overload
     def addSegment(self, pt: QtCore.QPoint, name: str = None): ...
 
     def addSegment(self, *args, name: str = None):

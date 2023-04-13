@@ -1,10 +1,14 @@
 import sys
-from PyQt5.QtWidgets import *
+# from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QSlider
+from PyQt5.QtWidgets import QDial, QLCDNumber, QLabel, QProgressBar, QPushButton
+from PyQt5.QtWidgets import QHBoxLayout
 # from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt
 
 import QMCWidgets
+
 
 class MainWindow(QMainWindow):
 
@@ -43,7 +47,6 @@ class MainWindow(QMainWindow):
         self.ADSR_Widget.decay_time = 35
         self.ADSR_Widget.sustain_level = 80
         self.ADSR_Widget.release_time = 20
-
 
     def InitWindow(self):
         self.setWindowIcon(QtGui.QIcon("icon.png"))
