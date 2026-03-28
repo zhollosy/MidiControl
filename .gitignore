@@ -102,6 +102,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+.vscode
 .idea
 .obsidian
 .env
@@ -129,7 +130,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-Makefile
-installed.txt
-!/installed.txt
-!/Makefile
+CLAUDE.md
