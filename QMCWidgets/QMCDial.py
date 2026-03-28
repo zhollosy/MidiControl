@@ -2,7 +2,7 @@ import math
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6 import QtGui, QtCore
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from ._theme import *
+from ._theme import D70_LED_ON
 
 
 class QMCDial(QWidget):
@@ -30,13 +30,13 @@ class QMCDial(QWidget):
         layout.addWidget(self._knob_area, 1)
 
         self._value_label = QLabel("0")
+        self._value_label.setObjectName("value_label")
         self._value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._value_label.setStyleSheet(f"color: {D70_TEXT}; font: 9pt 'Consolas';")
         layout.addWidget(self._value_label)
 
         self._name_label = QLabel(label)
+        self._name_label.setObjectName("name_label")
         self._name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._name_label.setStyleSheet(f"color: {D70_TEXT}; font: 8pt 'Consolas';")
         layout.addWidget(self._name_label)
 
     @property
@@ -130,6 +130,7 @@ class _KnobArea(QWidget):
 if __name__ == '__main__':
     import sys
     from PyQt6.QtWidgets import QApplication, QHBoxLayout
+    from ._theme import D70_BODY
     app = QApplication(sys.argv)
     w = QWidget()
     w.setStyleSheet(f"background-color: {D70_BODY};")

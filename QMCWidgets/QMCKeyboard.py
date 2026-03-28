@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import QWidget
+from PyQt6 import QtWidgets
 from PyQt6 import QtGui, QtCore
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from ._theme import *
@@ -30,6 +31,10 @@ class QMCKeyboard(QWidget):
         self._build_key_rects()
 
         self.setMouseTracking(True)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding
+        )
 
     @staticmethod
     def is_black_key(note):
@@ -49,29 +54,33 @@ class QMCKeyboard(QWidget):
         self._black_rects = []
 
         white_keys = self._white_keys_in_range()
-        ww = self._white_key_width
-        wh = self._white_key_height
-        bw = int(ww * 0.6)
-        bh = int(wh * 0.6)
+        if not white_keys:
+            return
+
+        w = self.width() or (len(white_keys) * self._white_key_width)
+        h = self.height() or self._white_key_height
+        ww = w / len(white_keys)
+        bw = ww * 0.6
+        bh = h * 0.6
 
         # Map each white key to its x position
         white_x = {}
         for i, note in enumerate(white_keys):
-            x = i * ww
+            x = int(i * ww)
+            x_next = int((i + 1) * ww)
             white_x[note] = x
-            self._white_rects.append((note, QtCore.QRect(x, 0, ww, wh)))
+            self._white_rects.append((note, QtCore.QRect(x, 0, x_next - x, h)))
 
         # Black keys sit between their adjacent white keys
         for note in range(self._start_note, self._end_note + 1):
             if not self.is_black_key(note):
                 continue
-            # Black key sits to the right of the previous white key
             prev_white = note - 1
             while prev_white >= self._start_note and self.is_black_key(prev_white):
                 prev_white -= 1
             if prev_white in white_x:
-                x = white_x[prev_white] + ww - bw // 2
-                self._black_rects.append((note, QtCore.QRect(x, 0, bw, bh)))
+                x = int(white_x[prev_white] + ww - bw / 2)
+                self._black_rects.append((note, QtCore.QRect(x, 0, int(bw), int(bh))))
 
     def _note_at_pos(self, pos):
         # Check black keys first (they are on top)
@@ -150,13 +159,16 @@ class QMCKeyboard(QWidget):
     def end_note(self):
         return self._end_note
 
+    def resizeEvent(self, e):
+        self._build_key_rects()
+
     def sizeHint(self):
         white_count = len(self._white_keys_in_range())
         return QSize(white_count * self._white_key_width + 1,
                      self._white_key_height)
 
     def minimumSizeHint(self):
-        return self.sizeHint()
+        return QSize(200, 60)
 
 
 if __name__ == '__main__':

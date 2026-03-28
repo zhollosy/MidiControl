@@ -1,0 +1,117 @@
+/* ═══════════════════════════════════════════
+   Roland D-70 Super LA Synthesis — Stylesheet
+   ═══════════════════════════════════════════ */
+
+/* ── Surface root ── */
+QMCSurfaceD70 {
+    background-color: #3a3a3a;
+    color: #d0d0d0;
+}
+
+/* ── Logo bar ── */
+QMCSurfaceD70 > QLabel#logo_label {
+    color: #d0d0d0;
+    font: bold 14pt 'Arial';
+    padding: 2px 8px;
+}
+
+QMCSurfaceD70 > QLabel#model_label {
+    color: #d0d0d0;
+    font: 11pt 'Consolas';
+    padding: 2px 8px;
+}
+
+/* ── Group headers ── */
+QMCGroup > QLabel#group_header {
+    background-color: #1a1a1a;
+    color: #d0d0d0;
+    font: bold 8pt 'Consolas';
+    border-top: 1px solid #555555;
+    border-bottom: 1px solid #222;
+    padding: 2px 6px;
+}
+
+QMCGroup > QWidget#group_content {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0.0 #909090, stop:0.15 #3a3a3a,
+        stop:0.35 #2e2e2e, stop:0.65 #2e2e2e,
+        stop:0.85 #111111, stop:1.0 #0a0a0a);
+}
+
+/* ── Buttons ── */
+QMCButton > QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #555, stop:0.1 #4a4a4a, stop:1 #3a3a3a);
+    color: #d0d0d0;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font: 8pt 'Consolas';
+}
+
+QMCButton > QPushButton:pressed {
+    background: #353535;
+    border: 1px solid #333;
+}
+
+QMCButton > QPushButton:checked {
+    background: #353535;
+    border: 1px solid #ff6622;
+}
+
+/* ── Sliders ── */
+QMCSlider > QLabel {
+    color: #d0d0d0;
+}
+
+QMCSlider > QLabel#value_label {
+    font: 9pt 'Consolas';
+}
+
+QMCSlider > QLabel#name_label {
+    font: 8pt 'Consolas';
+}
+
+QMCSlider > QSlider::groove:vertical {
+    background: #1a1a1a;
+    width: 8px;
+    border: 1px solid #111;
+    border-radius: 3px;
+}
+
+QMCSlider > QSlider::handle:vertical {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #5a5a5a, stop:1 #707070);
+    border: 1px solid #555555;
+    height: 16px;
+    margin: 0 -4px;
+    border-radius: 3px;
+}
+
+/* ── Dial labels ── */
+QMCDial > QLabel#value_label {
+    color: #d0d0d0;
+    font: 9pt 'Consolas';
+}
+
+QMCDial > QLabel#name_label {
+    color: #d0d0d0;
+    font: 8pt 'Consolas';
+}
+
+/* ── LCD display ── */
+QFrame#lcd_display {
+    background-color: #0a1a0a;
+    border: 2px inset #333;
+}
+
+QFrame#lcd_display > QLabel {
+    color: #33ff66;
+    font: 16pt 'Consolas';
+    background: transparent;
+}
+
+/* ── Keyboard ── */
+QMCKeyboard {
+    background-color: #2e2e2e;
+}

@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 from PyQt6 import QtGui, QtCore
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from ._theme import *
+from ._theme import D70_LED_ON, D70_LED_OFF
 
 
 class QMCButton(QWidget):
@@ -25,25 +25,6 @@ class QMCButton(QWidget):
 
         self._button = QPushButton(text)
         self._button.setCheckable(toggleable)
-        self._button.setStyleSheet(f"""
-            QPushButton {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #555, stop:0.1 {D70_BTN_FACE}, stop:1 #3a3a3a);
-                color: {D70_TEXT};
-                border: 1px solid {D70_BTN_BORDER};
-                border-radius: 3px;
-                padding: 4px 8px;
-                font: 8pt 'Consolas';
-            }}
-            QPushButton:pressed {{
-                background: {D70_BTN_PRESSED};
-                border: 1px solid #333;
-            }}
-            QPushButton:checked {{
-                background: {D70_BTN_PRESSED};
-                border: 1px solid {D70_LED_ON};
-            }}
-        """)
         layout.addWidget(self._button)
 
         self._button.clicked.connect(self._on_clicked)
@@ -93,6 +74,7 @@ class QMCButton(QWidget):
 if __name__ == '__main__':
     import sys
     from PyQt6.QtWidgets import QApplication, QHBoxLayout
+    from ._theme import D70_BODY
     app = QApplication(sys.argv)
     w = QWidget()
     w.setStyleSheet(f"background-color: {D70_BODY};")

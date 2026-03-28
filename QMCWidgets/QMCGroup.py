@@ -1,6 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLayout
 from PyQt6.QtCore import Qt, QSize
-from ._theme import *
 
 
 class QMCGroup(QWidget):
@@ -15,21 +14,14 @@ class QMCGroup(QWidget):
 
         # Header strip
         self._header = QLabel(title)
+        self._header.setObjectName("group_header")
         self._header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._header.setFixedHeight(22)
-        self._header.setStyleSheet(f"""
-            background-color: {D70_HEADER_BG};
-            color: {D70_TEXT};
-            font: bold 8pt 'Consolas';
-            border-top: 1px solid {D70_HEADER_BORDER};
-            border-bottom: 1px solid #222;
-            padding: 2px 6px;
-        """)
         self._main_layout.addWidget(self._header)
 
         # Content area
         self._content = QWidget()
-        self._content.setStyleSheet(f"background-color: {D70_PANEL};")
+        self._content.setObjectName("group_content")
         self._content_layout = QVBoxLayout(self._content)
         self._content_layout.setContentsMargins(4, 4, 4, 4)
         self._content_layout.setSpacing(4)
@@ -68,6 +60,7 @@ class QMCGroup(QWidget):
 if __name__ == '__main__':
     import sys
     from PyQt6.QtWidgets import QApplication, QHBoxLayout
+    from ._theme import D70_BODY
     from .QMCButton import QMCButton
     app = QApplication(sys.argv)
     w = QWidget()

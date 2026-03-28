@@ -1,13 +1,15 @@
+import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                              QGridLayout, QFrame, QLabel)
 from PyQt6.QtCore import Qt, QSize
 
-from QMCWidgets._theme import *
 from QMCWidgets.QMCSlider import QMCSlider
 from QMCWidgets.QMCButton import QMCButton
 from QMCWidgets.QMCDial import QMCDial
 from QMCWidgets.QMCGroup import QMCGroup
 from QMCWidgets.QMCKeyboard import QMCKeyboard
+
+_QSS_PATH = os.path.join(os.path.dirname(__file__), "RolandD70.qss")
 
 
 class QMCSurfaceD70(QWidget):
@@ -16,8 +18,12 @@ class QMCSurfaceD70(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Roland D-70 Super LA Synthesis")
-        self.setStyleSheet(f"background-color: {D70_BODY}; color: {D70_TEXT};")
+        self._load_stylesheet()
         self._setup_ui()
+
+    def _load_stylesheet(self):
+        with open(_QSS_PATH, "r", encoding="utf-8") as f:
+            self.setStyleSheet(f.read())
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -27,17 +33,9 @@ class QMCSurfaceD70(QWidget):
         # ── Logo bar ──
         logo_bar = QHBoxLayout()
         logo_label = QLabel("Roland")
-        logo_label.setStyleSheet(f"""
-            color: {D70_TEXT};
-            font: bold 14pt 'Arial';
-            padding: 2px 8px;
-        """)
+        logo_label.setObjectName("logo_label")
         model_label = QLabel("D-70  SUPER LA SYNTHESIS")
-        model_label.setStyleSheet(f"""
-            color: {D70_TEXT};
-            font: 11pt 'Consolas';
-            padding: 2px 8px;
-        """)
+        model_label.setObjectName("model_label")
         logo_bar.addWidget(logo_label)
         logo_bar.addWidget(model_label)
         logo_bar.addStretch()
@@ -101,18 +99,10 @@ class QMCSurfaceD70(QWidget):
         grp = QMCGroup(title="DISPLAY")
         # LCD placeholder
         lcd = QFrame()
+        lcd.setObjectName("lcd_display")
         lcd.setFixedSize(280, 80)
-        lcd.setStyleSheet(f"""
-            background-color: {D70_LCD_BG};
-            border: 2px inset #333;
-        """)
         lcd_label = QLabel("Roland D-70", lcd)
         lcd_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lcd_label.setStyleSheet(f"""
-            color: {D70_LCD_GREEN};
-            font: 16pt 'Consolas';
-            background: transparent;
-        """)
         lcd_label.setGeometry(0, 0, 280, 80)
 
         # Function buttons below LCD

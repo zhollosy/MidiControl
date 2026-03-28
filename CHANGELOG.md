@@ -14,6 +14,9 @@
 - Shared D70 color theme in `QMCWidgets/_theme.py`
 - Roland D-70 Surface UI (`QMCSurfaces/QMCSurfaceD70.py`) combining all widgets
 - D-70 surface includes: master volume, 6 sliders, LCD placeholder, control/tone/navigation/memory button groups, value dial, 76-key keyboard
+- External QSS stylesheet (`RolandD70.qss`) for D-70 surface theming
+- QMCGroup content area with D-70 style vertical gradient background
+- QMCKeyboard now scales to fill available space on resize
 
 ### Fixed
 - Focus rectangle now stays aligned with the actual drag point during hover

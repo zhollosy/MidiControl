@@ -1,6 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from ._theme import *
 
 
 class QMCSlider(QWidget):
@@ -18,35 +17,19 @@ class QMCSlider(QWidget):
         layout.setSpacing(2)
 
         self._value_label = QLabel(str(default))
+        self._value_label.setObjectName("value_label")
         self._value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._value_label.setStyleSheet(f"color: {D70_TEXT}; font: 9pt 'Consolas';")
         layout.addWidget(self._value_label)
 
         self._slider = QSlider(Qt.Orientation.Vertical)
         self._slider.setMinimum(min_val)
         self._slider.setMaximum(max_val)
         self._slider.setValue(default)
-        self._slider.setStyleSheet(f"""
-            QSlider::groove:vertical {{
-                background: {D70_GROOVE};
-                width: 8px;
-                border: 1px solid #111;
-                border-radius: 3px;
-            }}
-            QSlider::handle:vertical {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {D70_HANDLE}, stop:1 #707070);
-                border: 1px solid {D70_BTN_BORDER};
-                height: 16px;
-                margin: 0 -4px;
-                border-radius: 3px;
-            }}
-        """)
         layout.addWidget(self._slider, 1)
 
         self._name_label = QLabel(label)
+        self._name_label.setObjectName("name_label")
         self._name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._name_label.setStyleSheet(f"color: {D70_TEXT}; font: 8pt 'Consolas';")
         layout.addWidget(self._name_label)
 
         self._slider.valueChanged.connect(self._on_value_changed)
@@ -70,6 +53,7 @@ class QMCSlider(QWidget):
 if __name__ == '__main__':
     import sys
     from PyQt6.QtWidgets import QApplication, QHBoxLayout
+    from ._theme import D70_BODY
     app = QApplication(sys.argv)
     w = QWidget()
     w.setStyleSheet(f"background-color: {D70_BODY};")
