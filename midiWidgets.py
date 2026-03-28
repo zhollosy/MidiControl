@@ -1,9 +1,7 @@
 import sys
-# from PyQt6.QtWidgets import *
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QSlider
 from PyQt6.QtWidgets import QDial, QLCDNumber, QLabel, QProgressBar, QPushButton
 from PyQt6.QtWidgets import QHBoxLayout
-# from PyQt6.QtWidgets import QApplication, QWidget
 from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtCore import Qt
 

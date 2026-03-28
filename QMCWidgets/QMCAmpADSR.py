@@ -149,7 +149,7 @@ class QMCAmpADSR(QWidget):
 
         self.dragDistance = 10
         self.pt_hasFocus = False
-        self.focus_pt = QtCore.QPoint()
+        self.focus_pt_index = -1
         self.pt_dragging = None
         self.mouse_pressed = False
 
@@ -161,7 +161,7 @@ class QMCAmpADSR(QWidget):
         )
 
         self.curve_label = QLabel(self.tr('ADSR Amplifier'))
-        self.curve_label.setMouseTracking(True)
+        self.curve_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.curve_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
         self.curve_label.setStyleSheet("""
                 font: 12pt "Consolas" ;
@@ -198,25 +198,31 @@ class QMCAmpADSR(QWidget):
 
         if in_range_data['name']:
             self.pt_hasFocus = True
-            self.focus_pt = in_range_data['coord']
+            self.focus_pt_index = in_range_data['index']
         else:
-            # update if hasFocus changed
             if self.pt_hasFocus:
                 self.pt_hasFocus = False
+                self.focus_pt_index = -1
 
         if self.mouse_pressed and self.pt_dragging is not None:
-            pos_fixed = [min(self.contentsRect().width(),   max(0, pos.x())),
-                         min(127,                           max(0, pos.y()))]
-            pos_fixed = QtCore.QPoint(*pos_fixed)
+            # Convert from stretched content space back to original polygon space
+            bw = self.poly.boundingRect().width() or 1
+            tw = self.poly.target_size.width() or 1
+            th = self.poly.target_size.height() or 1
+            orig_x = int(pos.x() * bw / tw)
+            orig_y = int(pos.y() * self.poly.max_height / th)
+            orig_x = max(0, min(bw, orig_x))
+            orig_y = max(0, min(127, orig_y))
+
             if self.pt_dragging['name'] == 'attack':
-                self.attack_time = pos_fixed.x()
-                self.attack_level = pos_fixed.y()
+                self.attack_time = orig_x
+                self.attack_level = orig_y
             if self.pt_dragging['name'] == 'decay':
-                self.decay_time = max(self.attack_time, pos_fixed.x() - self.attack_time)
-                self.sustain_level = pos_fixed.y()
+                self.decay_time = max(0, orig_x - self.attack_time)
+                self.sustain_level = orig_y
             if self.pt_dragging['name'] == 'sustain':
-                self.decay_time = min(127, self.contentsRect().width() - pos_fixed.x())
-                self.sustain_level = pos_fixed.y()
+                self.decay_time = min(127, bw - orig_x)
+                self.sustain_level = orig_y
 
         label_data = [str(in_range_data["name"]).capitalize(),
                       pos.x(),
@@ -303,8 +309,8 @@ class QMCAmpADSR(QWidget):
         # adsr points
         list(map(self.drawPoint, poly_fitted))
 
-        if self.pt_hasFocus:
-            self.drawRectangle(self.focus_pt)
+        if self.pt_hasFocus and 0 <= self.focus_pt_index < poly_fitted.size():
+            self.drawRectangle(poly_fitted.point(self.focus_pt_index))
 
     def drawPoint(self, pt, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
@@ -416,9 +422,11 @@ class QMCAmpADSR(QWidget):
 
         if offsets[closest_i] < proximity:
             return {'name': pt_names[closest_i],
+                    'index': closest_i,
                     'offset': offsets[closest_i],
                     'coord': pts[closest_i]}
         else:
             return {'name': '',
+                    'index': -1,
                     'offset': 9999,
                     'coord': QtCore.QPoint(99999, 99999)}
