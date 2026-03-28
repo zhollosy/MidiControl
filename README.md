@@ -1,7 +1,22 @@
 # MidiControl
-General Qt Contollers for MIDI instruments
 
-**QMCAmpADSR**
+PyQt6 widgets for controlling MIDI instruments.
 
-<img src=https://raw.githubusercontent.com/zhollosy/MidiControl/main/doc/QMCAmpADSR_01.PNG>
+## QMCAmpADSR
 
+Interactive ADSR envelope editor with draggable control points and custom curve rendering.
+
+![QMCAmpADSR](doc/QMCAmpADSR_01.PNG)
+
+## Setup
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate && pip install -r requirements.txt
+```
+
+## Run
+
+```bash
+.venv/Scripts/activate && python midiWidgets.py
+```

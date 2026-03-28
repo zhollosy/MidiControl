@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import *
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import Qt
-import typing
-import copy
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout
+from PyQt6 import QtWidgets, QtCore, QtGui
+from PyQt6.QtCore import Qt
+from typing import overload
+
 
 class PointData(QtCore.QPoint):
     def __init__(self, time=0, value=0):
@@ -26,46 +26,6 @@ class PointData(QtCore.QPoint):
     def value(self, value):
         self.setX(value)
 
-class CurveData(object):
-    def __init__(self, segment_num):
-        super().__init__()
-
-        self.segment_time_max = 127
-        self.height_max = 127
-
-        self.targetSize = QtCore.QSize(127, 127)
-
-        self.segments = [[0, 0]] * segment_num
-        self._curve_pts = [[0, 0]] * (segment_num+1)
-
-    def __getitem__(self, i):
-        t_all = [p[0] for p in self.segments]
-        t = t_all[:i]
-        res = sum(t), self.segments[i - 1][1]
-        res_scaled = (res[0] * self.targetSize.width()/sum(t_all),
-                      res[1] * self.targetSize.height()/self.height_max)
-        return res_scaled
-
-    def __setitem__(self, key, value):
-        self._curve_pts[key] = value
-
-    def __len__(self):
-        return len(self._curve_pts)
-
-    def __delitem__(self, key):
-        del self._curve_pts[key]
-        del self.segments[key]
-
-    def setSegment(self, i, delta_time, level):
-        self.segments[i] = [delta_time, level]
-
-    def line(self, i):
-        return self[1], self[i+1]
-
-    @property
-    def width(self):
-        return self[-1][0]
-
 
 class QCurveData(QtGui.QPolygon):
     """ Curve data stored in QPolygon and some features more
@@ -79,27 +39,29 @@ class QCurveData(QtGui.QPolygon):
         self.max_height = 128
         self.point_names = []
 
+        self.target_size = QtCore.QSize(127, 127)
+
         self._check_point_names()
         # self.print_data()
 
-    def addPoint(self, x: int, y: int, name:str=None):
+    def addPoint(self, x: int, y: int, name: str = None):
         pt = QtCore.QPoint(x, y)
         self.append(pt)
         self._append_point_name(name)
 
-    @typing.overload
-    def addSegment(self, x: int, y: int, name:str=None): ...
+    @overload
+    def addSegment(self, x: int, y: int, name: str = None): ...
 
-    @typing.overload
-    def addSegment(self, pt:QtCore.QPoint, name:str=None): ...
+    @overload
+    def addSegment(self, pt: QtCore.QPoint, name: str = None): ...
 
-    def addSegment(self, *args, name:str=None):
+    def addSegment(self, *args, name: str = None):
         pt = args[0] if isinstance(args[0], QtCore.QPoint) else None
         x  = args[0] if isinstance(args[0], int) else None
-        y  = args[1] if len(args)>1 and isinstance(args[1], int) else None
+        y  = args[1] if len(args) > 1 and isinstance(args[1], int) else None
         name = args[-1] if isinstance(args[-1], str) else name
 
-        last = self.last() if self.size() else QtCore.QPoint()
+        last = QtCore.QPoint() if self.isEmpty() else self.last()
 
         if x is not None and y is not None:
             self.addPoint(last.x() + x,
@@ -112,7 +74,7 @@ class QCurveData(QtGui.QPolygon):
         else:
             raise TypeError('Add segments by two integers or a QPoint !!')
 
-    def getPointByName(self, name:str):
+    def getPointByName(self, name: str):
         if name in self.point_names:
             i = self.point_names.index(name)
             return self[i]
@@ -122,17 +84,16 @@ class QCurveData(QtGui.QPolygon):
         for i in range(self.size()):
             print(i, f"{self.point_names[i]:<10}", self.point(i))
 
-    def _append_point_name(self, name:str=None):
+    def _append_point_name(self, name: str = None):
         if name:
             self.point_names.append(name)
-            i = self.size() - 1
             setattr(self, name, self.getPointByName(name))
         else:
             i = len(self.point_names)
             point_name = f'point_{i:02d}'
             self.point_names.append(point_name)
 
-    def _rename_attr(self, old_name:str, new_name:str):
+    def _rename_attr(self, old_name: str, new_name: str):
         i = self.point_names.index(old_name)
         self.point_names[i] = new_name
 
@@ -140,116 +101,24 @@ class QCurveData(QtGui.QPolygon):
         setattr(self, new_name, self.getPointByName(new_name))
 
     def _check_point_names(self):
-        if self.size() == len(self.point_names): return
+        if self.size() == len(self.point_names):
+            return
         for i in range(len(self.point_names), self.size()+1):
             self._append_point_name()
 
-    def stretchedTo(self, target_size:QtCore.QSize):
+    def stretchedTo(self, target_size: QtCore.QSize):
         scale_w = target_size.width() / self.boundingRect().width()
         scale_h = target_size.height() / self.max_height
         trs = QtGui.QTransform()
         trs.scale(scale_w, scale_h)
         return trs.map(self)
 
-
-class CurveDataADSR(CurveData):
-    segment_num = 4
-    max_level = 127
-
-    def __init__(self):
-        super().__init__(CurveDataADSR.segment_num)
-
-        self.attack = 20, 127
-        self.decay = 35
-        self.sustain = 80
-        self.release = 20
-
-    # region PROPS
-    @property
-    def attack(self) -> [int, int]:
-        return self.segments[0]
-
-    @attack.setter
-    def attack(self, val):
-        self.setSegment(0, *val)
-
-    @property
-    def decay(self) -> int:
-        return self.segments[1][0]
-
-    @decay.setter
-    def decay(self, val):
-        self.setSegment(1, val, self.sustain)
-
-    @property
-    def sustain(self) -> int:
-        return self.segments[2][1]
-
-    @sustain.setter
-    def sustain(self, val):
-        sustain_time = self.width + self.segment_time_max / self.segment_num
-        self.setSegment(2, max(30, sustain_time), val)
-
-    @property
-    def release(self) -> int:
-        return self.segments[3][0]
-
-    @release.setter
-    def release(self, val):
-        self.setSegment(3, val, 0)
-    # endregion
-
-    # region POINTS
-    @property
-    def start_pt(self):
-        return QtCore.QPoint(0, 0)
-
-    @property
-    def attack_pt(self):
-        return QtCore.QPoint(*self[1])
-
-    @property
-    def decay_pt(self):
-        return QtCore.QPoint(*self[2])
-
-    @property
-    def sustain_pt(self):
-        return QtCore.QPoint(*self[3])
-
-    @property
-    def release_pt(self):
-        return QtCore.QPoint(*self[4])
-
-    @property
-    def end_pt(self):
-        return QtCore.QPoint(*self[4])
-    # endregion
-
-    # region CURVES
-    @property
-    def attack_crv(self):
-        pt_1 = self.start_pt
-        pt_2 = self.attack_pt
-        return QtCore.QLine(pt_1, pt_2)
-
-    @property
-    def decay_crv(self):
-        pt_1 = self.attack_pt
-        pt_2 = self.decay_pt
-        return QtCore.QLine(pt_1, pt_2)
-
-    @property
-    def sustain_crv(self):
-        pt_1 = self.decay_pt
-        pt_2 = self.sustain_pt
-        return QtCore.QLine(pt_1, pt_2)
-
-    @property
-    def release_crv(self):
-        pt_1 = self.sustain_pt
-        pt_2 = self.release_pt
-        return QtCore.QLine(pt_1, pt_2)
-    # endregion
+    def stretched(self):
+        scale_w = self.target_size.width() / self.boundingRect().width()
+        scale_h = self.target_size.height() / self.max_height
+        trs = QtGui.QTransform()
+        trs.scale(scale_w, scale_h)
+        return trs.map(self)
 
 
 class CurveView(QWidget):
@@ -264,16 +133,14 @@ class QMCAmpADSR(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        self._ADSR_curve_data = CurveDataADSR()
-
         self.backgroundColor = QtGui.QColor(4, 21, 37)
-        self.borderColor = Qt.black
+        self.borderColor = Qt.GlobalColor.black
         self.contentBorderColor = QtGui.QColor(74, 86, 100)
         self.lineColor = QtGui.QColor(59, 118, 168)
         self.pointColor = QtGui.QColor(255, 247, 197)
         self.gridColor = QtGui.QColor(74, 86, 100, 127)
-        self.background_gradColor_start = QtGui.QColor(74, 86, 100, alpha=0)
-        self.background_gradColor_stop = QtGui.QColor(74, 86, 100, alpha=200)
+        self.background_gradColor_start = QtGui.QColor(74, 86, 100, 0)
+        self.background_gradColor_stop = QtGui.QColor(74, 86, 100, 200)
 
         self.lineWidth = 3
         self.pointSize = 3
@@ -282,22 +149,22 @@ class QMCAmpADSR(QWidget):
 
         self.dragDistance = 10
         self.pt_hasFocus = False
-        self.focus_pt = QtCore.QPoint()
+        self.focus_pt_index = -1
         self.pt_dragging = None
         self.mouse_pressed = False
 
         self.setMouseTracking(True)
         self.setContentsMargins(20, 20, 20, 20)
         self.setSizePolicy(
-            QtWidgets.QSizePolicy.MinimumExpanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding
         )
 
         self.curve_label = QLabel(self.tr('ADSR Amplifier'))
-        self.curve_label.setMouseTracking(True)
-        self.curve_label.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
+        self.curve_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.curve_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
         self.curve_label.setStyleSheet("""
-                font: 12pt "Terminal" ;
+                font: 12pt "Consolas" ;
                 color: rgb(255, 255, 255);
         """)
 
@@ -307,12 +174,13 @@ class QMCAmpADSR(QWidget):
 
         # adsr as polygon
         self.poly = QCurveData()
-        self.poly.addSegment(0,0, 'start')
-        self.poly.addSegment(64,127, 'attack')
-        self.poly.addSegment(64,-64, 'decay')
-        self.poly.addSegment(72,0, 'sustain')
-        self.poly.addSegment(63,-63, 'release')
+        self.poly.addSegment(0, 0, 'start')
+        self.poly.addSegment(64, 127, 'attack')
+        self.poly.addSegment(64, -64, 'decay')
+        self.poly.addSegment(72, 0, 'sustain')
+        self.poly.addSegment(63, -63, 'release')
 
+        self.poly.target_size = self.contentsRect().size()
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
         self.mouse_pressed = True
@@ -330,25 +198,31 @@ class QMCAmpADSR(QWidget):
 
         if in_range_data['name']:
             self.pt_hasFocus = True
-            self.focus_pt = in_range_data['coord']
+            self.focus_pt_index = in_range_data['index']
         else:
-            # update if hasFocus changed
             if self.pt_hasFocus:
                 self.pt_hasFocus = False
+                self.focus_pt_index = -1
 
         if self.mouse_pressed and self.pt_dragging is not None:
-            pos_fixed = [min(self.contentsRect().width(),   max(0, pos.x())),
-                         min(127,                           max(0, pos.y()))]
-            pos_fixed = QtCore.QPoint(*pos_fixed)
+            # Convert from stretched content space back to original polygon space
+            bw = self.poly.boundingRect().width() or 1
+            tw = self.poly.target_size.width() or 1
+            th = self.poly.target_size.height() or 1
+            orig_x = int(pos.x() * bw / tw)
+            orig_y = int(pos.y() * self.poly.max_height / th)
+            orig_x = max(0, min(bw, orig_x))
+            orig_y = max(0, min(127, orig_y))
+
             if self.pt_dragging['name'] == 'attack':
-                self._ADSR_curve_data.attack = [pos_fixed.x(), pos_fixed.y()]
-                # self.attack_level = pos_fixed.y()
+                self.attack_time = orig_x
+                self.attack_level = orig_y
             if self.pt_dragging['name'] == 'decay':
-                self.decay_time = max(self.attack_time, pos_fixed.x() - self.attack_time)
-                self.sustain_level = pos_fixed.y()
+                self.decay_time = max(0, orig_x - self.attack_time)
+                self.sustain_level = orig_y
             if self.pt_dragging['name'] == 'sustain':
-                self.decay_time = min(127, self.contentsRect().width() - pos_fixed.x())
-                self.sustain_level = pos_fixed.y()
+                self.decay_time = min(127, bw - orig_x)
+                self.sustain_level = orig_y
 
         label_data = [str(in_range_data["name"]).capitalize(),
                       pos.x(),
@@ -371,73 +245,74 @@ class QMCAmpADSR(QWidget):
     # region GETTERS
     @property
     def attack_time(self):
-        return self._ADSR_curve_data.attack[0]
+        return self.poly.attack.x()
 
     @property
     def attack_level(self):
-        return self._ADSR_curve_data.attack[1]
+        return self.poly.attack.y()
 
     @property
     def decay_time(self):
-        return self._ADSR_curve_data.decay
+        return self.poly.decay.x() - self.poly.attack.x()
 
     @property
     def sustain_time(self):
-        return self._ADSR_curve_data.sustain[0]
+        return self.poly.sustain.x() - self.poly.decay.x()
 
     @property
     def sustain_level(self):
-        return self._ADSR_curve_data.sustain
+        return self.poly.sustain.y()
 
     @property
     def release_time(self):
-        return self._ADSR_curve_data.release[0]
+        return self.poly.release.x() - self.poly.sustain.x()
     # endregion
 
     # region SETTERS
     @attack_time.setter
     def attack_time(self, val):
-        self._ADSR_curve_data.attack[0] = val
+        self.poly.attack.setX(val)
 
     @attack_level.setter
     def attack_level(self, val):
-        self._ADSR_curve_data.attack[1] = val
+        self.poly.attack.setY(val)
 
     @decay_time.setter
     def decay_time(self, val):
-        self._ADSR_curve_data.decay = val
+        self.poly.decay.setX(self.attack_time + val)
 
     @sustain_level.setter
     def sustain_level(self, val):
-        self._ADSR_curve_data.sustain = val
+        self.poly.decay.setY(val)
+        self.poly.sustain.setY(val)
 
     @release_time.setter
     def release_time(self, val):
-        self._ADSR_curve_data.release = val
+        self.poly.release.setX(self.sustain_time + val)
     # endregion
 
     def sizeHint(self):
         return QtCore.QSize(200, 167)
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-        self._ADSR_curve_data.targetSize = self.contentsRect()
+        self.poly.target_size = self.contentsRect().size()
 
     def paintEvent(self, e):
         # background
         self.drawBackground()
 
         # adsr as polygon
-        poly_fitted = self.poly.stretchedTo(self.contentsRect())
+        poly_fitted = self.poly.stretched()
         self.drawPoly_background(poly_fitted)
         self.drawOpenPoly(poly_fitted)
 
         # adsr points
         list(map(self.drawPoint, poly_fitted))
 
-        if self.pt_hasFocus:
-            self.drawRectangle(self.focus_pt)
+        if self.pt_hasFocus and 0 <= self.focus_pt_index < poly_fitted.size():
+            self.drawRectangle(poly_fitted.point(self.focus_pt_index))
 
-    def drawPoint(self, pt, size=9, pattern=Qt.SolidLine):
+    def drawPoint(self, pt, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
 
         content = self.contentsMargins()
@@ -446,14 +321,15 @@ class QMCAmpADSR(QWidget):
 
         painter.setPen(QtGui.QPen(self.pointColor, 2, pattern))
 
+
         rect = QtCore.QRect(0, 0, self.pointSize, self.pointSize)
         rect.moveCenter(pt)
         painter.drawRect(rect)
         painter.end()
 
-    def drawLine(self, crv, pattern=Qt.SolidLine):
+    def drawLine(self, crv, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         content = self.contentsMargins()
         painter.translate(content.left(), self.geometry().height()-content.bottom())
@@ -463,9 +339,9 @@ class QMCAmpADSR(QWidget):
         painter.drawLine(crv)
         painter.end()
 
-    def drawOpenPoly(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
+    def drawOpenPoly(self, poly: QtGui.QPolygon, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         content = self.contentsMargins()
         painter.translate(content.left(), self.geometry().height() - content.bottom())  # Shift to Content
@@ -480,25 +356,24 @@ class QMCAmpADSR(QWidget):
 
         painter.end()
 
-    def drawPoly_background(self, poly:QtGui.QPolygon, pattern=Qt.SolidLine):
+    def drawPoly_background(self, poly: QtGui.QPolygon, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         content = self.contentsMargins()
         painter.translate(content.left(), self.geometry().height()-content.bottom())  # Shift to Content
         painter.scale(1, -1)  # flip
 
-        lin_grad = QtGui.QLinearGradient(poly.boundingRect().bottomLeft(), poly.boundingRect().topLeft())
+        lin_grad = QtGui.QLinearGradient(QtCore.QPointF(poly.boundingRect().bottomLeft()), QtCore.QPointF(poly.boundingRect().topLeft()))
         lin_grad.setColorAt(0.3, self.background_gradColor_start)
         lin_grad.setColorAt(1.0, self.background_gradColor_stop)
 
         painter.setBrush(QtGui.QBrush(lin_grad))
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, alpha=0), self.lineWidth, pattern))
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0), self.lineWidth, pattern))
         painter.drawPolygon(poly)
         painter.end()
 
-    def drawRectangle(self, center_pt, size=11, pattern=Qt.SolidLine):
-        print("FOCUSED", center_pt)
+    def drawRectangle(self, center_pt, size=11, pattern=Qt.PenStyle.SolidLine):
         trs = self.contentTransform.inverted()[0]
         center_pt = trs.map(center_pt)
 
@@ -508,7 +383,7 @@ class QMCAmpADSR(QWidget):
         rect.moveCenter(center_pt)
 
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         painter.setPen(QtGui.QPen(self.pointColor, 1, pattern))
         painter.drawRect(rect)
@@ -517,16 +392,16 @@ class QMCAmpADSR(QWidget):
     def drawBackground(self):
         painter = QtGui.QPainter(self)
 
-        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(self.borderColor, self.borderWidth, Qt.SolidLine))
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.BrushStyle.SolidPattern))
+        painter.setPen(QtGui.QPen(self.borderColor, self.borderWidth, Qt.PenStyle.SolidLine))
         painter.drawRect(0, 0, self.geometry().width(), self.geometry().height())
 
-        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(self.contentBorderColor, self.contentBorderWidth, Qt.SolidLine))
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.BrushStyle.SolidPattern))
+        painter.setPen(QtGui.QPen(self.contentBorderColor, self.contentBorderWidth, Qt.PenStyle.SolidLine))
         painter.drawRect(self.contentsRect())
 
-        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(self.gridColor, 2, Qt.SolidLine))
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.BrushStyle.SolidPattern))
+        painter.setPen(QtGui.QPen(self.gridColor, 2, Qt.PenStyle.SolidLine))
         grid_pace = QtCore.QPoint(0, int(self.contentsRect().height()/4))
         painter.drawLine(self.contentsRect().bottomLeft() - grid_pace,
                          self.contentsRect().bottomRight() - grid_pace)
@@ -536,46 +411,22 @@ class QMCAmpADSR(QWidget):
                          self.contentsRect().bottomRight() - grid_pace*3)
         painter.end()
 
-    def inRangeCurvePoint_mapped(self, pos, range=10):
+    def inRangeCurvePoint_mapped(self, pos, proximity=10):
         def mdist(pt): return (pt - pos).manhattanLength()
 
-        pts = list(self.poly.stretchedTo(self.contentsRect()))
+        pts = list(self.poly.stretched())
         pt_names = "start", "attack", "decay", "sustain", "end"
         offsets = list(map(mdist, pts))
 
         closest_i = offsets.index(sorted(offsets)[0])
 
-        if offsets[closest_i] < range:
+        if offsets[closest_i] < proximity:
             return {'name': pt_names[closest_i],
+                    'index': closest_i,
                     'offset': offsets[closest_i],
                     'coord': pts[closest_i]}
         else:
             return {'name': '',
+                    'index': -1,
                     'offset': 9999,
                     'coord': QtCore.QPoint(99999, 99999)}
-
-    def inRangeCurvePoint_mapped_OLD(self, pos, range=10):
-        start_pt = self._ADSR_curve_data.start_pt
-        attack_pt = self._ADSR_curve_data.attack_pt
-        decay_pt = self._ADSR_curve_data.decay_pt
-        sustain_pt = self._ADSR_curve_data.sustain_pt
-        end_pt = self._ADSR_curve_data.end_pt
-
-        start_offset = (start_pt - pos).manhattanLength()
-        attack_offset = (attack_pt - pos).manhattanLength()
-        decay_offset = (decay_pt  - pos).manhattanLength()
-        sustain_offset = (sustain_pt - pos).manhattanLength()
-        end_offset = (end_pt - pos).manhattanLength()
-
-        data_dicts = ({'name': 'start', 'offset': start_offset, 'coord': start_pt},
-                      {'name': 'attack', 'offset': attack_offset, 'coord': attack_pt},
-                      {'name': 'decay', 'offset': decay_offset, 'coord': decay_pt},
-                      {'name': 'sustain', 'offset': sustain_offset, 'coord': sustain_pt},
-                      {'name': 'end', 'offset': end_offset, 'coord': end_pt})
-
-        closest = sorted(data_dicts, key=lambda x: x['offset'])[0]
-
-        if closest['offset'] < range:
-            return closest
-        else:
-            return {'name': '', 'offset': None, 'coord': None}

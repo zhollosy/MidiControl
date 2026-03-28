@@ -1,10 +1,12 @@
 import sys
-from PyQt5.QtWidgets import *
-# from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QSlider
+from PyQt6.QtWidgets import QDial, QLCDNumber, QLabel, QProgressBar, QPushButton
+from PyQt6.QtWidgets import QHBoxLayout
+from PyQt6 import QtWidgets, QtCore, QtGui
+from PyQt6.QtCore import Qt
 
 import QMCWidgets
+
 
 class MainWindow(QMainWindow):
 
@@ -17,10 +19,10 @@ class MainWindow(QMainWindow):
         self.width = 680
         self.height = 500
 
-        layoutH_main = QHBoxLayout()
+        self.layoutH_main = QHBoxLayout()
 
         self.ADSR_Widget = QMCWidgets.QMCAmpADSR()
-        layoutH_main.addWidget(self.ADSR_Widget)
+        self.layoutH_main.addWidget(self.ADSR_Widget)
 
         widgets = [
             QDial,
@@ -31,10 +33,10 @@ class MainWindow(QMainWindow):
             QSlider]
 
         for w in widgets:
-            layoutH_main.addWidget(w())
+            self.layoutH_main.addWidget(w())
 
         widget = QWidget()
-        widget.setLayout(layoutH_main)
+        widget.setLayout(self.layoutH_main)
 
         self.setCentralWidget(widget)
 
@@ -43,7 +45,6 @@ class MainWindow(QMainWindow):
         self.ADSR_Widget.decay_time = 35
         self.ADSR_Widget.sustain_level = 80
         self.ADSR_Widget.release_time = 20
-
 
     def InitWindow(self):
         self.setWindowIcon(QtGui.QIcon("icon.png"))
@@ -61,7 +62,7 @@ def main():
     w = MainWindow()
     w.show()
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':
