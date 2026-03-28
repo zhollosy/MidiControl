@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import *
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout
+from PyQt6 import QtWidgets, QtCore, QtGui
+from PyQt6.QtCore import Qt
 from typing import overload
 
 
@@ -134,13 +134,13 @@ class QMCAmpADSR(QWidget):
         super().__init__(parent=parent)
 
         self.backgroundColor = QtGui.QColor(4, 21, 37)
-        self.borderColor = Qt.black
+        self.borderColor = Qt.GlobalColor.black
         self.contentBorderColor = QtGui.QColor(74, 86, 100)
         self.lineColor = QtGui.QColor(59, 118, 168)
         self.pointColor = QtGui.QColor(255, 247, 197)
         self.gridColor = QtGui.QColor(74, 86, 100, 127)
-        self.background_gradColor_start = QtGui.QColor(74, 86, 100, alpha=0)
-        self.background_gradColor_stop = QtGui.QColor(74, 86, 100, alpha=200)
+        self.background_gradColor_start = QtGui.QColor(74, 86, 100, 0)
+        self.background_gradColor_stop = QtGui.QColor(74, 86, 100, 200)
 
         self.lineWidth = 3
         self.pointSize = 3
@@ -156,15 +156,15 @@ class QMCAmpADSR(QWidget):
         self.setMouseTracking(True)
         self.setContentsMargins(20, 20, 20, 20)
         self.setSizePolicy(
-            QtWidgets.QSizePolicy.MinimumExpanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding
         )
 
         self.curve_label = QLabel(self.tr('ADSR Amplifier'))
         self.curve_label.setMouseTracking(True)
-        self.curve_label.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
+        self.curve_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
         self.curve_label.setStyleSheet("""
-                font: 12pt "Terminal" ;
+                font: 12pt "Consolas" ;
                 color: rgb(255, 255, 255);
         """)
 
@@ -306,7 +306,7 @@ class QMCAmpADSR(QWidget):
         if self.pt_hasFocus:
             self.drawRectangle(self.focus_pt)
 
-    def drawPoint(self, pt, pattern=Qt.SolidLine):
+    def drawPoint(self, pt, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
 
         content = self.contentsMargins()
@@ -315,14 +315,15 @@ class QMCAmpADSR(QWidget):
 
         painter.setPen(QtGui.QPen(self.pointColor, 2, pattern))
 
+
         rect = QtCore.QRect(0, 0, self.pointSize, self.pointSize)
         rect.moveCenter(pt)
         painter.drawRect(rect)
         painter.end()
 
-    def drawLine(self, crv, pattern=Qt.SolidLine):
+    def drawLine(self, crv, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         content = self.contentsMargins()
         painter.translate(content.left(), self.geometry().height()-content.bottom())
@@ -332,9 +333,9 @@ class QMCAmpADSR(QWidget):
         painter.drawLine(crv)
         painter.end()
 
-    def drawOpenPoly(self, poly: QtGui.QPolygon, pattern=Qt.SolidLine):
+    def drawOpenPoly(self, poly: QtGui.QPolygon, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         content = self.contentsMargins()
         painter.translate(content.left(), self.geometry().height() - content.bottom())  # Shift to Content
@@ -349,24 +350,24 @@ class QMCAmpADSR(QWidget):
 
         painter.end()
 
-    def drawPoly_background(self, poly: QtGui.QPolygon, pattern=Qt.SolidLine):
+    def drawPoly_background(self, poly: QtGui.QPolygon, pattern=Qt.PenStyle.SolidLine):
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         content = self.contentsMargins()
         painter.translate(content.left(), self.geometry().height()-content.bottom())  # Shift to Content
         painter.scale(1, -1)  # flip
 
-        lin_grad = QtGui.QLinearGradient(poly.boundingRect().bottomLeft(), poly.boundingRect().topLeft())
+        lin_grad = QtGui.QLinearGradient(QtCore.QPointF(poly.boundingRect().bottomLeft()), QtCore.QPointF(poly.boundingRect().topLeft()))
         lin_grad.setColorAt(0.3, self.background_gradColor_start)
         lin_grad.setColorAt(1.0, self.background_gradColor_stop)
 
         painter.setBrush(QtGui.QBrush(lin_grad))
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, alpha=0), self.lineWidth, pattern))
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0), self.lineWidth, pattern))
         painter.drawPolygon(poly)
         painter.end()
 
-    def drawRectangle(self, center_pt, size=11, pattern=Qt.SolidLine):
+    def drawRectangle(self, center_pt, size=11, pattern=Qt.PenStyle.SolidLine):
         trs = self.contentTransform.inverted()[0]
         center_pt = trs.map(center_pt)
 
@@ -376,7 +377,7 @@ class QMCAmpADSR(QWidget):
         rect.moveCenter(center_pt)
 
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         painter.setPen(QtGui.QPen(self.pointColor, 1, pattern))
         painter.drawRect(rect)
@@ -385,16 +386,16 @@ class QMCAmpADSR(QWidget):
     def drawBackground(self):
         painter = QtGui.QPainter(self)
 
-        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(self.borderColor, self.borderWidth, Qt.SolidLine))
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.BrushStyle.SolidPattern))
+        painter.setPen(QtGui.QPen(self.borderColor, self.borderWidth, Qt.PenStyle.SolidLine))
         painter.drawRect(0, 0, self.geometry().width(), self.geometry().height())
 
-        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(self.contentBorderColor, self.contentBorderWidth, Qt.SolidLine))
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.BrushStyle.SolidPattern))
+        painter.setPen(QtGui.QPen(self.contentBorderColor, self.contentBorderWidth, Qt.PenStyle.SolidLine))
         painter.drawRect(self.contentsRect())
 
-        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.SolidPattern))
-        painter.setPen(QtGui.QPen(self.gridColor, 2, Qt.SolidLine))
+        painter.setBrush(QtGui.QBrush(self.backgroundColor, Qt.BrushStyle.SolidPattern))
+        painter.setPen(QtGui.QPen(self.gridColor, 2, Qt.PenStyle.SolidLine))
         grid_pace = QtCore.QPoint(0, int(self.contentsRect().height()/4))
         painter.drawLine(self.contentsRect().bottomLeft() - grid_pace,
                          self.contentsRect().bottomRight() - grid_pace)
