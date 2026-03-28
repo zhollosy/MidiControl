@@ -74,10 +74,24 @@ class QCurveData(QtGui.QPolygon):
         else:
             raise TypeError('Add segments by two integers or a QPoint !!')
 
+    def indexOfName(self, name: str):
+        return self.point_names.index(name) if name in self.point_names else -1
+
     def getPointByName(self, name: str):
-        if name in self.point_names:
-            i = self.point_names.index(name)
-            return self[i]
+        i = self.indexOfName(name)
+        if i >= 0:
+            return self.point(i)
+
+    def setPointValue(self, name: str, x: int = None, y: int = None):
+        i = self.indexOfName(name)
+        if i < 0:
+            return
+        pt = self.point(i)
+        if x is not None:
+            pt.setX(x)
+        if y is not None:
+            pt.setY(y)
+        self.setPoint(i, pt)
 
     def print_data(self):
         print('----', self.size())
@@ -214,14 +228,31 @@ class QMCAmpADSR(QWidget):
             orig_x = max(0, min(bw, orig_x))
             orig_y = max(0, min(127, orig_y))
 
+            end_x = self.poly.getPointByName('release').x()
+            decay_x = self.poly.getPointByName('decay').x()
+            sustain_x = self.poly.getPointByName('sustain').x()
+            ctrl = a0.modifiers() & Qt.KeyboardModifier.ControlModifier
+
             if self.pt_dragging['name'] == 'attack':
-                self.attack_time = orig_x
+                if ctrl:
+                    # Ctrl+drag: preserve decay_time, shift decay point along
+                    dt = self.decay_time
+                    max_x = sustain_x - dt
+                    new_x = max(0, min(orig_x, max_x))
+                    self.attack_time = new_x
+                    self.decay_time = dt
+                else:
+                    # Normal drag: decay stays, attack clamped to decay
+                    new_x = max(0, min(orig_x, decay_x))
+                    self.attack_time = new_x
                 self.attack_level = orig_y
             if self.pt_dragging['name'] == 'decay':
-                self.decay_time = max(0, orig_x - self.attack_time)
+                new_x = max(self.attack_time, min(sustain_x, orig_x))
+                self.poly.setPointValue('decay', x=new_x)
                 self.sustain_level = orig_y
             if self.pt_dragging['name'] == 'sustain':
-                self.decay_time = min(127, bw - orig_x)
+                new_x = max(decay_x, min(end_x, orig_x))
+                self.poly.setPointValue('sustain', x=new_x)
                 self.sustain_level = orig_y
 
         label_data = [str(in_range_data["name"]).capitalize(),
@@ -245,50 +276,46 @@ class QMCAmpADSR(QWidget):
     # region GETTERS
     @property
     def attack_time(self):
-        return self.poly.attack.x()
+        return self.poly.getPointByName('attack').x()
 
     @property
     def attack_level(self):
-        return self.poly.attack.y()
+        return self.poly.getPointByName('attack').y()
 
     @property
     def decay_time(self):
-        return self.poly.decay.x() - self.poly.attack.x()
-
-    @property
-    def sustain_time(self):
-        return self.poly.sustain.x() - self.poly.decay.x()
+        return self.poly.getPointByName('decay').x() - self.attack_time
 
     @property
     def sustain_level(self):
-        return self.poly.sustain.y()
+        return self.poly.getPointByName('sustain').y()
 
     @property
     def release_time(self):
-        return self.poly.release.x() - self.poly.sustain.x()
+        return self.poly.getPointByName('release').x() - self.poly.getPointByName('sustain').x()
     # endregion
 
     # region SETTERS
     @attack_time.setter
     def attack_time(self, val):
-        self.poly.attack.setX(val)
+        self.poly.setPointValue('attack', x=val)
 
     @attack_level.setter
     def attack_level(self, val):
-        self.poly.attack.setY(val)
+        self.poly.setPointValue('attack', y=val)
 
     @decay_time.setter
     def decay_time(self, val):
-        self.poly.decay.setX(self.attack_time + val)
+        self.poly.setPointValue('decay', x=self.attack_time + val)
 
     @sustain_level.setter
     def sustain_level(self, val):
-        self.poly.decay.setY(val)
-        self.poly.sustain.setY(val)
+        self.poly.setPointValue('decay', y=val)
+        self.poly.setPointValue('sustain', y=val)
 
     @release_time.setter
     def release_time(self, val):
-        self.poly.release.setX(self.sustain_time + val)
+        self.poly.setPointValue('sustain', x=self.poly.getPointByName('release').x() - val)
     # endregion
 
     def sizeHint(self):
@@ -415,10 +442,12 @@ class QMCAmpADSR(QWidget):
         def mdist(pt): return (pt - pos).manhattanLength()
 
         pts = list(self.poly.stretched())
-        pt_names = "start", "attack", "decay", "sustain", "end"
-        offsets = list(map(mdist, pts))
+        pt_names = ("start", "attack", "decay", "sustain", "end")
+        # Only draggable points (skip start and end)
+        draggable = (1, 2, 3)  # attack, decay, sustain
+        offsets = {i: mdist(pts[i]) for i in draggable}
 
-        closest_i = offsets.index(sorted(offsets)[0])
+        closest_i = min(offsets, key=offsets.get)
 
         if offsets[closest_i] < proximity:
             return {'name': pt_names[closest_i],

@@ -6,6 +6,14 @@
 - Focus rectangle now stays aligned with the actual drag point during hover
 - Label no longer steals mouse events from the curve widget
 - Dragging decay/attack/sustain points no longer offsets from mouse position due to coordinate space mismatch
+- Point mutations now reliably update polygon data (fixed stale QPoint copy issue)
+
+### Changed
+- Attack drag: normal drag clamped to decay point, Ctrl+drag preserves decay time and shifts decay along
+- Sustain drag now controls sustain level (Y) and release time (X distance to end)
+- Removed sustain_time property (not a real synth parameter)
+- Start and end points are no longer draggable (fixed positions)
+- End point always pinned to bottom-right corner
 
 ## 2026-03-28
 
