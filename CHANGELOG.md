@@ -10,6 +10,10 @@
 - Updated README with full feature overview, property tables, and usage examples
 - New ADSR and ADBSR screenshots in `doc/` folder
 - Screenshot capture utility script
+- New reusable widgets: QMCSlider, QMCButton (with LED toggle), QMCDial (custom-painted knob), QMCGroup (section header), QMCKeyboard (dynamic piano keyboard)
+- Shared D70 color theme in `QMCWidgets/_theme.py`
+- Roland D-70 Surface UI (`QMCSurfaces/QMCSurfaceD70.py`) combining all widgets
+- D-70 surface includes: master volume, 6 sliders, LCD placeholder, control/tone/navigation/memory button groups, value dial, 76-key keyboard
 
 ### Fixed
 - Focus rectangle now stays aligned with the actual drag point during hover
