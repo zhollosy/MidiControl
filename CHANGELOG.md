@@ -9,11 +9,15 @@
 - Point mutations now reliably update polygon data (fixed stale QPoint copy issue)
 
 ### Changed
-- Attack drag: normal drag clamped to decay point, Ctrl+drag preserves decay time and shifts decay along
-- Sustain drag now controls sustain level (Y) and release time (X distance to end)
-- Removed sustain_time property (not a real synth parameter)
-- Start and end points are no longer draggable (fixed positions)
-- End point always pinned to bottom-right corner
+- Fixed graph width model: Attack(0-127) + Decay(0-127) + Sustain(fixed 64) + Release(0-127)
+- Stretching uses fixed max width (445) instead of dynamic bounding rect for stable coordinates
+- All times and values clamped to 0-127 range
+- Attack drag pushes decay, sustain, and release points right preserving their times
+- Decay drag pushes sustain and release points right preserving release time
+- Sustain drag only controls sustain level (Y)
+- Release point draggable horizontally to set release time
+- Label shows context-sensitive ADSR values per focused point
+- Start point is not draggable (fixed at origin)
 
 ## 2026-03-28
 

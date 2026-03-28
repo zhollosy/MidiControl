@@ -37,6 +37,7 @@ class QCurveData(QtGui.QPolygon):
     def __init__(self):
         super(QCurveData, self).__init__()
         self.max_height = 128
+        self.max_width = None  # Set externally for fixed-width scaling
         self.point_names = []
 
         self.target_size = QtCore.QSize(127, 127)
@@ -128,7 +129,8 @@ class QCurveData(QtGui.QPolygon):
         return trs.map(self)
 
     def stretched(self):
-        scale_w = self.target_size.width() / self.boundingRect().width()
+        base_w = self.max_width if self.max_width else self.boundingRect().width()
+        scale_w = self.target_size.width() / base_w
         scale_h = self.target_size.height() / self.max_height
         trs = QtGui.QTransform()
         trs.scale(scale_w, scale_h)
@@ -187,13 +189,19 @@ class QMCAmpADSR(QWidget):
         self.setLayout(layout)
 
         # adsr as polygon
+        # Fixed layout: Attack(max 127) + Decay(max 127) + Sustain(fixed 64) + Release(max 127)
+        self.SUSTAIN_TIME = 64
+        self.MAX_TIME = 127
+        self.MAX_LEVEL = 127
+
         self.poly = QCurveData()
         self.poly.addSegment(0, 0, 'start')
-        self.poly.addSegment(64, 127, 'attack')
-        self.poly.addSegment(64, -64, 'decay')
-        self.poly.addSegment(72, 0, 'sustain')
-        self.poly.addSegment(63, -63, 'release')
+        self.poly.addSegment(64, 127, 'attack')       # attack_time=64, attack_level=127
+        self.poly.addSegment(64, -64, 'decay')         # decay_time=64, sustain_level=63
+        self.poly.addSegment(self.SUSTAIN_TIME, 0, 'sustain')  # fixed 64 wide
+        self.poly.addSegment(63, -63, 'release')       # release_time=63
 
+        self.poly.max_width = 3 * self.MAX_TIME + self.SUSTAIN_TIME  # 445
         self.poly.target_size = self.contentsRect().size()
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
@@ -220,45 +228,56 @@ class QMCAmpADSR(QWidget):
 
         if self.mouse_pressed and self.pt_dragging is not None:
             # Convert from stretched content space back to original polygon space
-            bw = self.poly.boundingRect().width() or 1
+            mw = self.poly.max_width or self.poly.boundingRect().width() or 1
             tw = self.poly.target_size.width() or 1
             th = self.poly.target_size.height() or 1
-            orig_x = int(pos.x() * bw / tw)
+            orig_x = int(pos.x() * mw / tw)
             orig_y = int(pos.y() * self.poly.max_height / th)
-            orig_x = max(0, min(bw, orig_x))
-            orig_y = max(0, min(127, orig_y))
-
-            end_x = self.poly.getPointByName('release').x()
-            decay_x = self.poly.getPointByName('decay').x()
-            sustain_x = self.poly.getPointByName('sustain').x()
-            ctrl = a0.modifiers() & Qt.KeyboardModifier.ControlModifier
+            orig_x = max(0, orig_x)
+            orig_y = max(0, min(self.MAX_LEVEL, orig_y))
 
             if self.pt_dragging['name'] == 'attack':
-                if ctrl:
-                    # Ctrl+drag: preserve decay_time, shift decay point along
-                    dt = self.decay_time
-                    max_x = sustain_x - dt
-                    new_x = max(0, min(orig_x, max_x))
-                    self.attack_time = new_x
-                    self.decay_time = dt
-                else:
-                    # Normal drag: decay stays, attack clamped to decay
-                    new_x = max(0, min(orig_x, decay_x))
-                    self.attack_time = new_x
+                new_at = max(0, min(self.MAX_TIME, orig_x))
+                # Save current times before modifying
+                dt = self.decay_time
+                rt = self.release_time
+                self.attack_time = new_at
                 self.attack_level = orig_y
-            if self.pt_dragging['name'] == 'decay':
-                new_x = max(self.attack_time, min(sustain_x, orig_x))
-                self.poly.setPointValue('decay', x=new_x)
+                # Push decay, sustain, release right (preserve their times)
+                self.decay_time = dt
+                self._sync_sustain_x()
+                self.release_time = rt
+
+            elif self.pt_dragging['name'] == 'decay':
+                new_dt = max(0, min(self.MAX_TIME, orig_x - self.attack_time))
+                # Save release time before modifying
+                rt = self.release_time
+                self.decay_time = new_dt
                 self.sustain_level = orig_y
-            if self.pt_dragging['name'] == 'sustain':
-                new_x = max(decay_x, min(end_x, orig_x))
-                self.poly.setPointValue('sustain', x=new_x)
+                # Push sustain, release right (preserve release time)
+                self._sync_sustain_x()
+                self.release_time = rt
+
+            elif self.pt_dragging['name'] == 'sustain':
                 self.sustain_level = orig_y
 
-        label_data = [str(in_range_data["name"]).capitalize(),
-                      pos.x(),
-                      pos.y()]
-        self.curve_label.setText('{}\n [ {:>3},{:>3} ]'.format(*label_data))
+            elif self.pt_dragging['name'] == 'release':
+                sustain_x = self.poly.getPointByName('sustain').x()
+                new_rt = max(0, min(self.MAX_TIME, orig_x - sustain_x))
+                self.release_time = new_rt
+
+        name = in_range_data['name']
+        if name == 'attack':
+            label_text = f'Attack\n [ A:{self.attack_time:>3}, A:{self.attack_level:>3} ]'
+        elif name == 'decay':
+            label_text = f'Decay\n [ D:{self.decay_time:>3}, S:{self.sustain_level:>3} ]'
+        elif name == 'sustain':
+            label_text = f'Sustain\n [ S:{self.sustain_level:>3}, R:{self.release_time:>3} ]'
+        elif name == 'release':
+            label_text = f'Release\n [ R:{self.release_time:>3} ]'
+        else:
+            label_text = f'[ {pos.x():>3},{pos.y():>3} ]'
+        self.curve_label.setText(label_text)
         self.update()
 
     def mouseReleaseEvent(self, a0: QtGui.QMouseEvent) -> None:
@@ -298,24 +317,33 @@ class QMCAmpADSR(QWidget):
     # region SETTERS
     @attack_time.setter
     def attack_time(self, val):
-        self.poly.setPointValue('attack', x=val)
+        self.poly.setPointValue('attack', x=max(0, min(self.MAX_TIME, val)))
 
     @attack_level.setter
     def attack_level(self, val):
-        self.poly.setPointValue('attack', y=val)
+        self.poly.setPointValue('attack', y=max(0, min(self.MAX_LEVEL, val)))
 
     @decay_time.setter
     def decay_time(self, val):
+        val = max(0, min(self.MAX_TIME, val))
         self.poly.setPointValue('decay', x=self.attack_time + val)
 
     @sustain_level.setter
     def sustain_level(self, val):
+        val = max(0, min(self.MAX_LEVEL, val))
         self.poly.setPointValue('decay', y=val)
         self.poly.setPointValue('sustain', y=val)
 
     @release_time.setter
     def release_time(self, val):
-        self.poly.setPointValue('sustain', x=self.poly.getPointByName('release').x() - val)
+        val = max(0, min(self.MAX_TIME, val))
+        self.poly.setPointValue('release', x=self.poly.getPointByName('sustain').x() + val)
+    def _sync_sustain_x(self):
+        self.poly.setPointValue('sustain', x=self.poly.getPointByName('decay').x() + self.SUSTAIN_TIME)
+
+    def _sync_release_x(self):
+        rt = self.release_time
+        self.poly.setPointValue('release', x=self.poly.getPointByName('sustain').x() + max(0, rt))
     # endregion
 
     def sizeHint(self):
@@ -442,9 +470,9 @@ class QMCAmpADSR(QWidget):
         def mdist(pt): return (pt - pos).manhattanLength()
 
         pts = list(self.poly.stretched())
-        pt_names = ("start", "attack", "decay", "sustain", "end")
-        # Only draggable points (skip start and end)
-        draggable = (1, 2, 3)  # attack, decay, sustain
+        pt_names = ("start", "attack", "decay", "sustain", "release")
+        # Draggable points (skip start)
+        draggable = (1, 2, 3, 4)  # attack, decay, sustain, release
         offsets = {i: mdist(pts[i]) for i in draggable}
 
         closest_i = min(offsets, key=offsets.get)
