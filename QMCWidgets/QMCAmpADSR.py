@@ -146,8 +146,10 @@ class QMCAmpADSR(QWidget):
 
     # TODO: Add ghost curve
     # TODO: Shade (gradient) curve area
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, breakpoint=False):
         super().__init__(parent=parent)
+
+        self._has_breakpoint = breakpoint
 
         self.backgroundColor = QtGui.QColor(4, 21, 37)
         self.borderColor = Qt.GlobalColor.black
@@ -190,6 +192,7 @@ class QMCAmpADSR(QWidget):
 
         # adsr as polygon
         # Fixed layout: Attack(max 127) + Decay(max 127) + Sustain(fixed 64) + Release(max 127)
+        # With breakpoint: Attack(127) + Decay1(127) + Decay2(127) + Sustain(64) + Release(127)
         self.SUSTAIN_TIME = 64
         self.MAX_TIME = 127
         self.MAX_LEVEL = 127
@@ -197,11 +200,18 @@ class QMCAmpADSR(QWidget):
         self.poly = QCurveData()
         self.poly.addSegment(0, 0, 'start')
         self.poly.addSegment(64, 127, 'attack')       # attack_time=64, attack_level=127
-        self.poly.addSegment(64, -64, 'decay')         # decay_time=64, sustain_level=63
+
+        if self._has_breakpoint:
+            self.poly.addSegment(64, -32, 'breakpoint')  # decay1_time=64, breakpoint_level=95
+            self.poly.addSegment(64, -32, 'decay')       # decay2_time=64, sustain_level=63
+        else:
+            self.poly.addSegment(64, -64, 'decay')       # decay_time=64, sustain_level=63
+
         self.poly.addSegment(self.SUSTAIN_TIME, 0, 'sustain')  # fixed 64 wide
         self.poly.addSegment(63, -63, 'release')       # release_time=63
 
-        self.poly.max_width = 3 * self.MAX_TIME + self.SUSTAIN_TIME  # 445
+        time_segments = 4 if self._has_breakpoint else 3
+        self.poly.max_width = time_segments * self.MAX_TIME + self.SUSTAIN_TIME
         self.poly.target_size = self.contentsRect().size()
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
@@ -240,8 +250,16 @@ class QMCAmpADSR(QWidget):
                 self.attack_time = orig_x
                 self.attack_level = orig_y
 
+            elif self.pt_dragging['name'] == 'breakpoint':
+                self.breakpoint_time = orig_x - self.attack_time
+                self.breakpoint_level = orig_y
+
             elif self.pt_dragging['name'] == 'decay':
-                self.decay_time = orig_x - self.attack_time
+                if self._has_breakpoint:
+                    bp_x = self.poly.getPointByName('breakpoint').x()
+                    self.decay_time = orig_x - bp_x
+                else:
+                    self.decay_time = orig_x - self.attack_time
                 self.sustain_level = orig_y
 
             elif self.pt_dragging['name'] == 'sustain':
@@ -254,6 +272,8 @@ class QMCAmpADSR(QWidget):
         name = in_range_data['name']
         if name == 'attack':
             label_text = f'Attack\n [ A:{self.attack_time:>3}, A:{self.attack_level:>3} ]'
+        elif name == 'breakpoint':
+            label_text = f'Breakpoint\n [ D1:{self.breakpoint_time:>3}, BP:{self.breakpoint_level:>3} ]'
         elif name == 'decay':
             label_text = f'Decay\n [ D:{self.decay_time:>3}, S:{self.sustain_level:>3} ]'
         elif name == 'sustain':
@@ -287,7 +307,21 @@ class QMCAmpADSR(QWidget):
         return self.poly.getPointByName('attack').y()
 
     @property
+    def breakpoint_time(self):
+        if not self._has_breakpoint:
+            return 0
+        return self.poly.getPointByName('breakpoint').x() - self.attack_time
+
+    @property
+    def breakpoint_level(self):
+        if not self._has_breakpoint:
+            return 0
+        return self.poly.getPointByName('breakpoint').y()
+
+    @property
     def decay_time(self):
+        if self._has_breakpoint:
+            return self.poly.getPointByName('decay').x() - self.poly.getPointByName('breakpoint').x()
         return self.poly.getPointByName('decay').x() - self.attack_time
 
     @property
@@ -304,8 +338,13 @@ class QMCAmpADSR(QWidget):
     def attack_time(self, val):
         rt = self.release_time
         dt = self.decay_time
+        bpt = self.breakpoint_time
         self.poly.setPointValue('attack', x=max(0, min(self.MAX_TIME, val)))
-        self.poly.setPointValue('decay', x=self.attack_time + dt)
+        if self._has_breakpoint:
+            self.poly.setPointValue('breakpoint', x=self.attack_time + bpt)
+            self.poly.setPointValue('decay', x=self.attack_time + bpt + dt)
+        else:
+            self.poly.setPointValue('decay', x=self.attack_time + dt)
         self._sync_sustain_x()
         self.poly.setPointValue('release', x=self.poly.getPointByName('sustain').x() + rt)
 
@@ -313,11 +352,33 @@ class QMCAmpADSR(QWidget):
     def attack_level(self, val):
         self.poly.setPointValue('attack', y=max(0, min(self.MAX_LEVEL, val)))
 
+    @breakpoint_time.setter
+    def breakpoint_time(self, val):
+        if not self._has_breakpoint:
+            return
+        rt = self.release_time
+        dt = self.decay_time
+        val = max(0, min(self.MAX_TIME, val))
+        self.poly.setPointValue('breakpoint', x=self.attack_time + val)
+        self.poly.setPointValue('decay', x=self.attack_time + val + dt)
+        self._sync_sustain_x()
+        self.poly.setPointValue('release', x=self.poly.getPointByName('sustain').x() + rt)
+
+    @breakpoint_level.setter
+    def breakpoint_level(self, val):
+        if not self._has_breakpoint:
+            return
+        self.poly.setPointValue('breakpoint', y=max(0, min(self.MAX_LEVEL, val)))
+
     @decay_time.setter
     def decay_time(self, val):
         rt = self.release_time
         val = max(0, min(self.MAX_TIME, val))
-        self.poly.setPointValue('decay', x=self.attack_time + val)
+        if self._has_breakpoint:
+            bp_x = self.poly.getPointByName('breakpoint').x()
+            self.poly.setPointValue('decay', x=bp_x + val)
+        else:
+            self.poly.setPointValue('decay', x=self.attack_time + val)
         self._sync_sustain_x()
         self.poly.setPointValue('release', x=self.poly.getPointByName('sustain').x() + rt)
 
@@ -331,6 +392,7 @@ class QMCAmpADSR(QWidget):
     def release_time(self, val):
         val = max(0, min(self.MAX_TIME, val))
         self.poly.setPointValue('release', x=self.poly.getPointByName('sustain').x() + val)
+
     def _sync_sustain_x(self):
         self.poly.setPointValue('sustain', x=self.poly.getPointByName('decay').x() + self.SUSTAIN_TIME)
 
@@ -463,9 +525,12 @@ class QMCAmpADSR(QWidget):
         def mdist(pt): return (pt - pos).manhattanLength()
 
         pts = list(self.poly.stretched())
-        pt_names = ("start", "attack", "decay", "sustain", "release")
-        # Draggable points (skip start)
-        draggable = (1, 2, 3, 4)  # attack, decay, sustain, release
+        if self._has_breakpoint:
+            pt_names = ("start", "attack", "breakpoint", "decay", "sustain", "release")
+            draggable = (1, 2, 3, 4, 5)
+        else:
+            pt_names = ("start", "attack", "decay", "sustain", "release")
+            draggable = (1, 2, 3, 4)
         offsets = {i: mdist(pts[i]) for i in draggable}
 
         closest_i = min(offsets, key=offsets.get)

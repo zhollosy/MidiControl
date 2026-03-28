@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- Optional decay breakpoint between Attack and Decay (`breakpoint=False` by default)
+- When enabled, splits Decay into Decay1 (Attack→Breakpoint) and Decay2 (Breakpoint→Sustain)
+- Breakpoint adds a 5th time segment (127), increasing max width from 445 to 572
+- New `breakpoint_time` and `breakpoint_level` properties with full drag support
+
 ### Fixed
 - Focus rectangle now stays aligned with the actual drag point during hover
 - Label no longer steals mouse events from the curve widget
