@@ -7,6 +7,7 @@
 - Label no longer steals mouse events from the curve widget
 - Dragging decay/attack/sustain points no longer offsets from mouse position due to coordinate space mismatch
 - Point mutations now reliably update polygon data (fixed stale QPoint copy issue)
+- Setters auto-sync downstream points (sustain/release) preventing pop on first drag
 
 ### Changed
 - Fixed graph width model: Attack(0-127) + Decay(0-127) + Sustain(fixed 64) + Release(0-127)
