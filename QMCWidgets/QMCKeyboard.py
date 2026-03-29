@@ -93,26 +93,56 @@ class QMCKeyboard(QWidget):
         return -1
 
     def paintEvent(self, e):
+        if not self._white_rects:
+            return
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         # White keys
         for note, rect in self._white_rects:
             if note in self._active_notes:
-                painter.setBrush(QtGui.QBrush(QtGui.QColor(D70_KEY_PRESSED)))
+                grad = QtGui.QLinearGradient(QtCore.QPointF(rect.topLeft()), QtCore.QPointF(rect.bottomLeft()))
+                grad.setColorAt(0.0, QtGui.QColor("#7799bb"))
+                grad.setColorAt(0.3, QtGui.QColor(D70_KEY_PRESSED))
+                grad.setColorAt(1.0, QtGui.QColor("#4a6a88"))
             else:
-                painter.setBrush(QtGui.QBrush(QtGui.QColor(D70_KEY_WHITE)))
+                grad = QtGui.QLinearGradient(QtCore.QPointF(rect.topLeft()), QtCore.QPointF(rect.bottomLeft()))
+                grad.setColorAt(0.0, QtGui.QColor("#ffffff"))
+                grad.setColorAt(0.05, QtGui.QColor("#f8f8f8"))
+                grad.setColorAt(0.8, QtGui.QColor("#e0e0e0"))
+                grad.setColorAt(0.95, QtGui.QColor("#c8c8c8"))
+                grad.setColorAt(1.0, QtGui.QColor("#b0b0b0"))
+            painter.setBrush(QtGui.QBrush(grad))
             painter.setPen(QtGui.QPen(QtGui.QColor(D70_KEY_BORDER), 1))
             painter.drawRect(rect)
+            # Glossy highlight along left edge
+            painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 90), 1))
+            painter.drawLine(rect.left() + 1, rect.top() + 1,
+                             rect.left() + 1, rect.bottom() - 2)
 
         # Black keys
         for note, rect in self._black_rects:
             if note in self._active_notes:
-                painter.setBrush(QtGui.QBrush(QtGui.QColor(D70_KEY_PRESSED)))
+                grad = QtGui.QLinearGradient(QtCore.QPointF(rect.topLeft()), QtCore.QPointF(rect.bottomLeft()))
+                grad.setColorAt(0.0, QtGui.QColor("#556677"))
+                grad.setColorAt(0.4, QtGui.QColor(D70_KEY_PRESSED))
+                grad.setColorAt(1.0, QtGui.QColor("#334455"))
             else:
-                painter.setBrush(QtGui.QBrush(QtGui.QColor(D70_KEY_BLACK)))
+                grad = QtGui.QLinearGradient(QtCore.QPointF(rect.topLeft()), QtCore.QPointF(rect.bottomLeft()))
+                grad.setColorAt(0.0, QtGui.QColor("#444444"))
+                grad.setColorAt(0.1, QtGui.QColor("#2a2a2a"))
+                grad.setColorAt(0.7, QtGui.QColor("#181818"))
+                grad.setColorAt(0.9, QtGui.QColor("#0a0a0a"))
+                grad.setColorAt(1.0, QtGui.QColor("#222222"))
+            painter.setBrush(QtGui.QBrush(grad))
             painter.setPen(QtGui.QPen(QtGui.QColor("#000"), 1))
             painter.drawRect(rect)
+            # Glossy highlight along top and left edge
+            painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 50), 1))
+            painter.drawLine(rect.left() + 1, rect.top() + 1,
+                             rect.right() - 1, rect.top() + 1)
+            painter.drawLine(rect.left() + 1, rect.top() + 1,
+                             rect.left() + 1, rect.bottom() - 4)
 
         painter.end()
 
