@@ -105,16 +105,20 @@ class _KnobArea(QWidget):
         painter.setPen(QtGui.QPen(QtGui.QColor("#222"), 1.5))
         painter.drawEllipse(rect)
 
-        # Value arc
-        val_ratio = (self._dial._value - self._dial._min) / max(1, self._dial._max - self._dial._min)
-        span = int(-val_ratio * QMCDial.ARC_SPAN * 16)
-        arc_rect = rect.adjusted(3, 3, -3, -3)
-        painter.setPen(QtGui.QPen(QtGui.QColor(D70_LED_ON), 2.5))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawArc(arc_rect.toRect(), QMCDial.ARC_START * 16, span)
+        if self._dial._endless:
+            # Endless: just a rotating indicator, no arc
+            angle_deg = self._dial._angle
+        else:
+            # Value arc
+            val_ratio = (self._dial._value - self._dial._min) / max(1, self._dial._max - self._dial._min)
+            span = int(-val_ratio * QMCDial.ARC_SPAN * 16)
+            arc_rect = rect.adjusted(3, 3, -3, -3)
+            painter.setPen(QtGui.QPen(QtGui.QColor(D70_LED_ON), 2.5))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawArc(arc_rect.toRect(), QMCDial.ARC_START * 16, span)
+            angle_deg = QMCDial.ARC_START - val_ratio * QMCDial.ARC_SPAN
 
         # Position indicator line
-        angle_deg = QMCDial.ARC_START - val_ratio * QMCDial.ARC_SPAN
         angle_rad = math.radians(angle_deg)
         inner_r = radius * 0.35
         outer_r = radius * 0.85
@@ -136,15 +140,23 @@ class _KnobArea(QWidget):
         if self._dial._dragging:
             dy = self._last_y - e.pos().y()
             self._last_y = e.pos().y()
-            sensitivity = max(1, (self._dial._max - self._dial._min) / self.height())
-            self._dial.value = self._dial._value + int(dy * sensitivity)
+            if self._dial._endless:
+                steps = int(dy)
+                if steps != 0:
+                    self._dial.step(steps)
+            else:
+                sensitivity = max(1, (self._dial._max - self._dial._min) / self.height())
+                self._dial.value = self._dial._value + int(dy * sensitivity)
 
     def mouseReleaseEvent(self, e):
         self._dial._dragging = False
 
     def wheelEvent(self, e):
         delta = 1 if e.angleDelta().y() > 0 else -1
-        self._dial.value = self._dial._value + delta
+        if self._dial._endless:
+            self._dial.step(delta)
+        else:
+            self._dial.value = self._dial._value + delta
 
 
 if __name__ == '__main__':
