@@ -14,12 +14,16 @@ class QMCDial(QWidget):
     ARC_START = 225
     ARC_SPAN = 270
 
-    def __init__(self, parent=None, label="", min_val=0, max_val=127):
+    stepped = pyqtSignal(int)  # relative delta (+1/-1) for endless mode
+
+    def __init__(self, parent=None, label="", min_val=0, max_val=127, endless=False):
         super().__init__(parent)
 
         self._min = min_val
         self._max = max_val
         self._value = 0
+        self._endless = endless
+        self._angle = 0.0  # current rotation angle for endless mode
         self._dragging = False
 
         layout = QVBoxLayout(self)
@@ -40,17 +44,33 @@ class QMCDial(QWidget):
         layout.addWidget(self._name_label)
 
     @property
+    def endless(self):
+        return self._endless
+
+    @endless.setter
+    def endless(self, val):
+        self._endless = val
+        self._knob_area.update()
+
+    @property
     def value(self):
         return self._value
 
     @value.setter
     def value(self, val):
-        val = max(self._min, min(self._max, val))
+        if not self._endless:
+            val = max(self._min, min(self._max, val))
         if val != self._value:
             self._value = val
             self._value_label.setText(str(val))
             self._knob_area.update()
             self.valueChanged.emit(val)
+
+    def step(self, delta):
+        """Apply a relative step (for endless mode). Emits stepped signal."""
+        self._angle = (self._angle + delta * 15) % 360
+        self._knob_area.update()
+        self.stepped.emit(delta)
 
     def sizeHint(self):
         return QSize(80, 110)
