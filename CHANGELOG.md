@@ -3,6 +3,27 @@
 ## [Unreleased]
 
 ### Added
+- New QMCBendModWheel widget: 2-axis joystick for Bender (X) and Modulation (Y) control
+  - Configurable spring-back animation (~60fps)
+  - Aspect ratio options: 3:1 (wide), 2:1, 1:1 (square)
+  - Labels painted relative to pad rectangle, not widget edges
+- New QMCSliderGroup widget: groups sliders with optional tick marks and labels
+  - Tick overlay paints between actual groove edges using transparent overlay
+  - Group-level labels in a separate row so sliders pack tightly
+  - Compact mode centers sliders with expanding spacers
+  - Optional top/bottom title bars with line spacers
+- QMCSlider now fully custom-painted (no QSlider dependency)
+  - Configurable groove width, indicator color, label position
+  - Show/hide label and value display independently
+  - Groove extends visually beyond handle travel range
+- D-70 surface: left-of-keyboard controller panel with Volume, C1, Brightness sliders and Bender/Modulation joystick
+- Removed empty MASTER section from D-70 top panel
+
+### Changed
+- D-70 tone palette sliders now use QMCSliderGroup with ticks and orange indicators
+- Slider groove/handle rendering moved from QSS to custom paint for pixel-precise layout
+
+### Added (previous)
 - Optional decay breakpoint between Attack and Decay (`breakpoint=False` by default)
 - When enabled, splits Decay into Decay1 (Attack→Breakpoint) and Decay2 (Breakpoint→Sustain)
 - Breakpoint adds a 5th time segment (127), increasing max width from 445 to 572

@@ -8,6 +8,8 @@ from QMCWidgets.QMCButton import QMCButton
 from QMCWidgets.QMCDial import QMCDial
 from QMCWidgets.QMCGroup import QMCGroup
 from QMCWidgets.QMCKeyboard import QMCKeyboard
+from QMCWidgets.QMCBendModWheel import QMCBendModWheel
+from QMCWidgets.QMCSliderGroup import QMCSliderGroup
 
 _QSS_PATH = os.path.join(os.path.dirname(__file__), "RolandD70.qss")
 
@@ -45,7 +47,6 @@ class QMCSurfaceD70(QWidget):
         top_panel = QHBoxLayout()
         top_panel.setSpacing(4)
 
-        top_panel.addWidget(self._build_master_section())
         top_panel.addWidget(self._build_sliders_section())
         top_panel.addWidget(self._build_display_section(), 1)
         top_panel.addWidget(self._build_control_section())
@@ -60,10 +61,39 @@ class QMCSurfaceD70(QWidget):
         bottom_panel = QHBoxLayout()
         bottom_panel.setSpacing(4)
 
-        # Pitch bend placeholder
-        bend_slider = QMCSlider(label="Bend", min_val=-64, max_val=63, default=0)
-        bend_slider.setFixedWidth(50)
-        bottom_panel.addWidget(bend_slider)
+        # Left-of-keyboard controller panel
+        kbd_ctrl_widget = QWidget()
+        kbd_ctrl_widget.setFixedWidth(160)
+        kbd_ctrl = QVBoxLayout(kbd_ctrl_widget)
+        kbd_ctrl.setContentsMargins(0, 0, 0, 0)
+        kbd_ctrl.setSpacing(2)
+
+        # Top row: Volume, C1, Brightness sliders
+        self._kbd_sliders = QMCSliderGroup(
+            labels=["Volume", "C1", "Bright"], label_position='top',
+            ticks=True, compact=True, tick_color='#d0d0d0')
+        self.master_volume = QMCSlider(default=100,
+                                       indicator_color="#d0d0d0",
+                                       groove_width=20,
+                                       show_label=False, show_value=False)
+        self.slider_c1 = QMCSlider(default=64,
+                                   indicator_color="#d0d0d0",
+                                   groove_width=20,
+                                   show_label=False, show_value=False)
+        self.slider_brightness = QMCSlider(default=64,
+                                           indicator_color="#d0d0d0",
+                                           groove_width=20,
+                                           show_label=False, show_value=False)
+        self._kbd_sliders.addSlider(self.master_volume)
+        self._kbd_sliders.addSlider(self.slider_c1)
+        self._kbd_sliders.addSlider(self.slider_brightness)
+        kbd_ctrl.addWidget(self._kbd_sliders, 1)
+
+        # Bottom row: Bender/Modulation joystick
+        self.bend_mod = QMCBendModWheel(aspect_ratio=3, spring_back=True)
+        kbd_ctrl.addWidget(self.bend_mod, 1)
+
+        bottom_panel.addWidget(kbd_ctrl_widget)
 
         # 76-key keyboard (E1=28 to G7=103)
         self.keyboard = QMCKeyboard(start_note=28, end_note=103)
@@ -73,25 +103,16 @@ class QMCSurfaceD70(QWidget):
 
     # ── Section builders ──
 
-    def _build_master_section(self):
-        grp = QMCGroup(title="MASTER")
-        self.master_volume = QMCSlider(label="Volume", default=100)
-        grp.addWidget(self.master_volume)
-        return grp
-
     def _build_sliders_section(self):
         grp = QMCGroup(title="SLIDERS")
-        layout = QHBoxLayout()
-        layout.setSpacing(2)
-        self.slider_c1 = QMCSlider(label="C1", default=64)
-        self.slider_brightness = QMCSlider(label="Bright", default=64)
-        layout.addWidget(self.slider_c1)
-        layout.addWidget(self.slider_brightness)
+        slider_grp = QMCSliderGroup(top_label="TONE PALETTE", ticks=True)
         self.tone_palette_sliders = []
         for i in range(1, 5):
-            s = QMCSlider(label=str(i), default=64)
+            s = QMCSlider(label=str(i), default=64, indicator_color="#ff6622")
             self.tone_palette_sliders.append(s)
-            layout.addWidget(s)
+            slider_grp.addSlider(s)
+        layout = QVBoxLayout()
+        layout.addWidget(slider_grp)
         grp.setContentLayout(layout)
         return grp
 

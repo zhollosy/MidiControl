@@ -72,20 +72,12 @@ QMCSlider > QLabel#name_label {
     font: 8pt 'Consolas';
 }
 
-QMCSlider > QSlider::groove:vertical {
-    background: #1a1a1a;
-    width: 8px;
-    border: 1px solid #111;
-    border-radius: 3px;
-}
+/* Slider groove/handle now custom-painted in _CustomSlider */
 
-QMCSlider > QSlider::handle:vertical {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 #5a5a5a, stop:1 #707070);
-    border: 1px solid #555555;
-    height: 16px;
-    margin: 0 -4px;
-    border-radius: 3px;
+/* ── Slider group labels ── */
+QMCSliderGroup QLabel#name_label {
+    color: #ffffff;
+    font: 8pt 'Consolas';
 }
 
 /* ── Dial labels ── */

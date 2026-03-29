@@ -6,3 +6,5 @@ from .QMCButton import QMCButton
 from .QMCDial import QMCDial
 from .QMCGroup import QMCGroup
 from .QMCKeyboard import QMCKeyboard
+from .QMCBendModWheel import QMCBendModWheel
+from .QMCSliderGroup import QMCSliderGroup
