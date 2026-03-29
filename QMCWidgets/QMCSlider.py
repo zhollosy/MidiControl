@@ -165,7 +165,8 @@ class QMCSlider(QWidget):
 
     def __init__(self, parent=None, label="", min_val=0, max_val=127,
                  default=0, indicator_color=None, groove_width=None,
-                 show_label=True, show_value=True, label_position='bottom'):
+                 show_label=True, show_value=True,
+                 label_position='bottom', value_position='top'):
         super().__init__(parent)
 
         self._label_text = label
@@ -191,15 +192,18 @@ class QMCSlider(QWidget):
                                      indicator_color=indicator_color,
                                      groove_width=gw)
 
+        # Top widgets
         if label_position == 'top':
             layout.addWidget(self._name_label, 0, Qt.AlignmentFlag.AlignHCenter)
-            layout.addWidget(self._value_label, 0, Qt.AlignmentFlag.AlignHCenter)
-        else:
+        if value_position == 'top':
             layout.addWidget(self._value_label, 0, Qt.AlignmentFlag.AlignHCenter)
 
-        layout.addWidget(self._slider, 1)
+        layout.addWidget(self._slider, 1, Qt.AlignmentFlag.AlignHCenter)
 
-        if label_position != 'top':
+        # Bottom widgets
+        if value_position == 'bottom':
+            layout.addWidget(self._value_label, 0, Qt.AlignmentFlag.AlignHCenter)
+        if label_position == 'bottom':
             layout.addWidget(self._name_label, 0, Qt.AlignmentFlag.AlignHCenter)
 
         self._slider.valueChanged.connect(self._on_value_changed)

@@ -163,19 +163,28 @@ class _PadArea(QWidget):
     def pad_rect(self) -> QRectF:
         m = self._owner._pad_margin
         # Reserve space for top and bottom labels
-        top_offset = self.LABEL_HEIGHT + 2
-        bottom_offset = self.LABEL_HEIGHT + 2
-        r = QRectF(self.rect()).adjusted(m, top_offset, -m, -bottom_offset)
+        top_offset = self.LABEL_HEIGHT * 2 + 4  # two lines of text + gap
+        bottom_offset = self.LABEL_HEIGHT + 4
+        avail = QRectF(self.rect()).adjusted(m, top_offset, -m, -bottom_offset)
         # Enforce aspect ratio within available space
         target_ratio = self._owner._aspect_ratio
-        current_ratio = r.width() / max(r.height(), 1)
+        current_ratio = avail.width() / max(avail.height(), 1)
         if current_ratio > target_ratio:
-            new_w = r.height() * target_ratio
-            r = QRectF(r.center().x() - new_w / 2, r.top(), new_w, r.height())
+            new_w = avail.height() * target_ratio
+            avail = QRectF(avail.center().x() - new_w / 2, avail.top(),
+                           new_w, avail.height())
         elif current_ratio < target_ratio:
-            new_h = r.width() / target_ratio
-            r = QRectF(r.left(), r.center().y() - new_h / 2, r.width(), new_h)
-        return r
+            new_h = avail.width() / target_ratio
+            avail = QRectF(avail.left(), avail.center().y() - new_h / 2,
+                           avail.width(), new_h)
+        # Clamp so labels always have room
+        min_top = top_offset
+        max_bottom = self.height() - bottom_offset
+        if avail.top() < min_top:
+            avail.moveTop(min_top)
+        if avail.bottom() > max_bottom:
+            avail.setHeight(max_bottom - avail.top())
+        return avail
 
     def _stick_pos(self) -> QPointF:
         pr = self.pad_rect()

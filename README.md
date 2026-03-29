@@ -63,7 +63,8 @@ Custom-painted vertical fader with configurable groove width and indicator line.
 ```python
 QMCSlider(label="Volume", default=100)
 QMCSlider(label="Wide", default=100, groove_width=20, indicator_color="#d0d0d0")
-QMCSlider(label="Top", default=40, indicator_color="#ff6622", label_position='top')
+QMCSlider(label="Top", default=40, indicator_color="#ff6622",
+          label_position='top', value_position='bottom')
 QMCSlider(default=80, groove_width=20, show_label=False, show_value=False)
 ```
 
@@ -78,6 +79,7 @@ QMCSlider(default=80, groove_width=20, show_label=False, show_value=False)
 | `show_label`      | `True`     | Show/hide name label                     |
 | `show_value`      | `True`     | Show/hide value display                  |
 | `label_position`  | `'bottom'` | `'top'` or `'bottom'`                    |
+| `value_position`  | `'top'`    | `'top'` or `'bottom'`                    |
 
 ---
 
@@ -158,21 +160,28 @@ endless_dial = QMCDial(label="Data Entry", endless=True)
 
 ### QMCButton
 
-Styled push button with optional LED toggle indicator.
+Hardware-style thin button with label above and optional LED slit indicator.
 
 ![QMCButton](doc/QMCButton.png)
+![QMCButton variants](doc/QMCButton_variants.png)
 
 ```python
-QMCButton(text="Play")                          # momentary
-QMCButton(text="Solo", toggleable=True)         # toggle with LED
-QMCButton(text="Mute", toggleable=True, led=False)  # toggle without LED
+QMCButton(text="Play")                                    # momentary
+QMCButton(text="Solo", toggleable=True)                   # toggle with LED
+QMCButton(text="Green", toggleable=True, led_color='#00cc44', led_off_color='#003300')
+QMCButton(text="Frame", toggleable=True, edge_light=True)
 ```
 
-| Parameter    | Default | Description                 |
-|--------------|---------|-----------------------------|
-| `text`       | `""`    | Button label                |
-| `toggleable` | `False` | Enable toggle mode          |
-| `led`        | `True`  | Show LED when toggleable    |
+| Parameter       | Default     | Description                           |
+|-----------------|-------------|---------------------------------------|
+| `text`          | `""`        | Label text (displayed above body)     |
+| `toggleable`    | `False`     | Enable toggle mode                    |
+| `led`           | `True`      | Show LED slit when toggleable         |
+| `led_size`      | `0.2`       | LED width as fraction of body (0.1-1.0) |
+| `led_position`  | `'top'`     | `'top'` or `'bottom'`                |
+| `led_color`     | `'#cc0000'` | LED on color                          |
+| `led_off_color` | `'#330000'` | LED off color                         |
+| `edge_light`   | `False`     | Tint border with LED color            |
 
 ---
 

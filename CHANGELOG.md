@@ -16,12 +16,22 @@
   - Configurable groove width, indicator color, label position
   - Show/hide label and value display independently
   - Groove extends visually beyond handle travel range
+- QMCButton rewritten as hardware-style thin strip with LED slit
+  - Configurable LED size (0.1-1.0), position (top/bottom), color
+  - Edge light option tints border with LED color
+  - Label displayed above the button body
+- QMCDial redesigned with flat/edgy look (beveled outer ring, flat inner face)
+  - Value arc drawn outside knob body for better visibility
+- QMCGroup header now custom-painted with line spacers on both sides of text
+  - Header position: top (lines at baseline) or bottom (lines at ascent)
 - D-70 surface: left-of-keyboard controller panel with Volume, C1, Brightness sliders and Bender/Modulation joystick
 - Removed empty MASTER section from D-70 top panel
+- Widget screenshot variants for buttons, groups, and sliders
 
 ### Changed
 - D-70 tone palette sliders now use QMCSliderGroup with ticks and orange indicators
 - Slider groove/handle rendering moved from QSS to custom paint for pixel-precise layout
+- D-70 QSS group header selector updated for custom-painted header widget
 
 ### Added (previous)
 - Optional decay breakpoint between Attack and Decay (`breakpoint=False` by default)

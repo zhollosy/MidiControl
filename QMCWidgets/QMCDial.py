@@ -89,44 +89,59 @@ class _KnobArea(QWidget):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
-        side = min(self.width(), self.height()) - 4
+        side = min(self.width(), self.height()) - 8
         x = (self.width() - side) // 2
         y = (self.height() - side) // 2
         rect = QtCore.QRectF(x, y, side, side)
         center = rect.center()
         radius = side / 2
 
-        # Knob body
-        grad = QtGui.QRadialGradient(center, radius)
-        grad.setColorAt(0.0, QtGui.QColor("#606060"))
-        grad.setColorAt(0.7, QtGui.QColor("#3a3a3a"))
-        grad.setColorAt(1.0, QtGui.QColor("#2a2a2a"))
-        painter.setBrush(QtGui.QBrush(grad))
-        painter.setPen(QtGui.QPen(QtGui.QColor("#222"), 1.5))
+        # Outer ring — beveled edge
+        outer_grad = QtGui.QLinearGradient(rect.topLeft(), rect.bottomRight())
+        outer_grad.setColorAt(0.0, QtGui.QColor("#4a4a4a"))
+        outer_grad.setColorAt(1.0, QtGui.QColor("#1a1a1a"))
+        painter.setBrush(QtGui.QBrush(outer_grad))
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(rect)
 
+        # Inner face — flat with subtle top-down gradient
+        inset = 3
+        inner_rect = rect.adjusted(inset, inset, -inset, -inset)
+        face_grad = QtGui.QLinearGradient(inner_rect.topLeft(),
+                                          inner_rect.bottomLeft())
+        face_grad.setColorAt(0.0, QtGui.QColor("#3a3a3a"))
+        face_grad.setColorAt(0.4, QtGui.QColor("#333333"))
+        face_grad.setColorAt(1.0, QtGui.QColor("#2a2a2a"))
+        painter.setBrush(QtGui.QBrush(face_grad))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(inner_rect)
+
+        # Notch ring — subtle groove between face and edge
+        painter.setPen(QtGui.QPen(QtGui.QColor("#1a1a1a"), 0.5))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(inner_rect)
+
         if self._dial._endless:
-            # Endless: just a rotating indicator, no arc
             angle_deg = self._dial._angle
         else:
             # Value arc
             val_ratio = (self._dial._value - self._dial._min) / max(1, self._dial._max - self._dial._min)
             span = int(-val_ratio * QMCDial.ARC_SPAN * 16)
-            arc_rect = rect.adjusted(3, 3, -3, -3)
+            arc_rect = rect.adjusted(-2, -2, 2, 2)
             painter.setPen(QtGui.QPen(QtGui.QColor(D70_LED_ON), 2.5))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawArc(arc_rect.toRect(), QMCDial.ARC_START * 16, span)
             angle_deg = QMCDial.ARC_START - val_ratio * QMCDial.ARC_SPAN
 
-        # Position indicator line
+        # Position indicator — short notch from edge inward
         angle_rad = math.radians(angle_deg)
-        inner_r = radius * 0.35
-        outer_r = radius * 0.85
+        inner_r = radius * 0.45
+        outer_r = radius * 0.82
         x1 = center.x() + inner_r * math.cos(angle_rad)
         y1 = center.y() - inner_r * math.sin(angle_rad)
         x2 = center.x() + outer_r * math.cos(angle_rad)
         y2 = center.y() - outer_r * math.sin(angle_rad)
-        painter.setPen(QtGui.QPen(QtGui.QColor("#eee"), 2))
+        painter.setPen(QtGui.QPen(QtGui.QColor("#eee"), 2.5))
         painter.drawLine(QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2))
 
         painter.end()

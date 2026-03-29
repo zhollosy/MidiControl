@@ -22,13 +22,10 @@ QMCSurfaceD70 > QLabel#model_label {
 }
 
 /* ── Group headers ── */
-QMCGroup > QLabel#group_header {
+QMCGroup > QWidget#group_header {
     background-color: #1a1a1a;
     color: #d0d0d0;
     font: bold 8pt 'Consolas';
-    border-top: 1px solid #555555;
-    border-bottom: 1px solid #222;
-    padding: 2px 6px;
 }
 
 QMCGroup > QWidget#group_content {
@@ -38,26 +35,13 @@ QMCGroup > QWidget#group_content {
         stop:0.85 #111111, stop:1.0 #0a0a0a);
 }
 
-/* ── Buttons ── */
-QMCButton > QPushButton {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #555, stop:0.1 #4a4a4a, stop:1 #3a3a3a);
+/* ── Button label ── */
+QMCButton > QLabel#button_label {
     color: #d0d0d0;
-    border: 1px solid #555555;
-    border-radius: 3px;
-    padding: 4px 8px;
     font: 8pt 'Consolas';
 }
 
-QMCButton > QPushButton:pressed {
-    background: #353535;
-    border: 1px solid #333;
-}
-
-QMCButton > QPushButton:checked {
-    background: #353535;
-    border: 1px solid #ff6622;
-}
+/* Button body/LED now custom-painted in _ButtonBody */
 
 /* ── Sliders ── */
 QMCSlider > QLabel {
