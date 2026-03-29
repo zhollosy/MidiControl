@@ -27,6 +27,9 @@
 - D-70 surface: left-of-keyboard controller panel with Volume, C1, Brightness sliders and Bender/Modulation joystick
 - Removed empty MASTER section from D-70 top panel
 - Widget screenshot variants for buttons, groups, and sliders
+- QMCKeyboard: velocity from vertical click position, aftertouch from downward drag
+  - Configurable aftertouch sensitivity via `aftertouch_pixels` (default 64px = full 127)
+- D-70 surface: logging infrastructure with `_connect_signals` hook
 
 ### Changed
 - D-70 tone palette sliders now use QMCSliderGroup with ticks and orange indicators

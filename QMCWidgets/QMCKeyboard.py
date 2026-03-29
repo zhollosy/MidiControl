@@ -12,19 +12,24 @@ _NOTE_NAMES = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B')
 class QMCKeyboard(QWidget):
     """Qt Midi Controller Piano Keyboard with configurable note range"""
 
-    noteOn = pyqtSignal(int, int)   # (note, velocity)
-    noteOff = pyqtSignal(int)       # (note,)
+    noteOn = pyqtSignal(int, int)        # (note, velocity)
+    noteOff = pyqtSignal(int)            # (note,)
+    aftertouch = pyqtSignal(int, int)    # (note, pressure 0-127)
 
     def __init__(self, parent=None, start_note=28, end_note=103,
-                 white_key_width=18, white_key_height=90):
+                 white_key_width=18, white_key_height=90,
+                 aftertouch_pixels=64):
         super().__init__(parent)
 
         self._start_note = start_note
         self._end_note = end_note
         self._white_key_width = white_key_width
         self._white_key_height = white_key_height
+        self._aftertouch_pixels = aftertouch_pixels
         self._active_notes = set()
         self._pressed_note = -1
+        self._press_y = 0
+        self._aftertouch_value = 0
 
         self._white_rects = []  # (note, QRect)
         self._black_rects = []  # (note, QRect)
@@ -146,28 +151,57 @@ class QMCKeyboard(QWidget):
 
         painter.end()
 
+    def _velocity_from_pos(self, pos, note):
+        """Map vertical click position within the key to velocity 1-127."""
+        # Find the key rect
+        rects = self._black_rects if self.is_black_key(note) else self._white_rects
+        for n, rect in rects:
+            if n == note:
+                ratio = (pos.y() - rect.top()) / max(rect.height(), 1)
+                ratio = max(0.0, min(1.0, ratio))
+                return max(1, int(round(ratio * 127)))
+        return 100
+
     def mousePressEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton:
             note = self._note_at_pos(e.pos())
             if note >= 0:
                 self._pressed_note = note
+                self._press_y = e.pos().y()
+                self._aftertouch_value = 0
                 self._active_notes.add(note)
-                self.noteOn.emit(note, 100)
+                vel = self._velocity_from_pos(e.pos(), note)
+                self.noteOn.emit(note, vel)
                 self.update()
 
     def mouseMoveEvent(self, e):
         if self._pressed_note >= 0:
             note = self._note_at_pos(e.pos())
             if note != self._pressed_note and note >= 0:
+                # Moved to a different key
                 self._active_notes.discard(self._pressed_note)
                 self.noteOff.emit(self._pressed_note)
                 self._pressed_note = note
+                self._press_y = e.pos().y()
+                self._aftertouch_value = 0
                 self._active_notes.add(note)
-                self.noteOn.emit(note, 100)
+                vel = self._velocity_from_pos(e.pos(), note)
+                self.noteOn.emit(note, vel)
                 self.update()
+            else:
+                # Same key — calculate aftertouch from downward drag
+                dy = e.pos().y() - self._press_y
+                if dy > 0:
+                    pressure = min(127, int(round(dy / self._aftertouch_pixels * 127)))
+                    if pressure != self._aftertouch_value:
+                        self._aftertouch_value = pressure
+                        self.aftertouch.emit(self._pressed_note, pressure)
 
     def mouseReleaseEvent(self, e):
         if self._pressed_note >= 0:
+            if self._aftertouch_value > 0:
+                self.aftertouch.emit(self._pressed_note, 0)
+                self._aftertouch_value = 0
             self._active_notes.discard(self._pressed_note)
             self.noteOff.emit(self._pressed_note)
             self._pressed_note = -1
@@ -210,5 +244,6 @@ if __name__ == '__main__':
     kb.setWindowTitle("QMCKeyboard - 76 keys")
     kb.noteOn.connect(lambda n, v: print(f"NoteOn: {QMCKeyboard.note_name(n)} vel={v}"))
     kb.noteOff.connect(lambda n: print(f"NoteOff: {QMCKeyboard.note_name(n)}"))
+    kb.aftertouch.connect(lambda n, p: print(f"Aftertouch: {QMCKeyboard.note_name(n)} pressure={p}"))
     kb.show()
     sys.exit(app.exec())

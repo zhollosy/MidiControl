@@ -193,12 +193,22 @@ Dynamic piano keyboard with configurable note range. Scales to fill available sp
 
 ```python
 keyboard = QMCKeyboard(start_note=28, end_note=103)  # 76 keys (E1-G7)
+keyboard.noteOn.connect(lambda note, vel: ...)
+keyboard.noteOff.connect(lambda note: ...)
+keyboard.aftertouch.connect(lambda note, pressure: ...)
 ```
 
-| Parameter    | Default | Description              |
-|--------------|---------|--------------------------|
-| `start_note` | `21`    | First MIDI note number   |
-| `end_note`   | `108`   | Last MIDI note number    |
+| Parameter          | Default | Description                          |
+|--------------------|---------|--------------------------------------|
+| `start_note`       | `28`    | First MIDI note number               |
+| `end_note`         | `103`   | Last MIDI note number                |
+| `aftertouch_pixels`| `64`    | Pixels of downward drag for full 127 |
+
+| Signal       | Type        | Description                                    |
+|--------------|-------------|------------------------------------------------|
+| `noteOn`     | `int, int`  | Note number and velocity (from vertical click position) |
+| `noteOff`    | `int`       | Note number on key release                     |
+| `aftertouch` | `int, int`  | Note number and pressure (0-127) from drag down |
 
 ---
 

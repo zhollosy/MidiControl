@@ -1,4 +1,5 @@
 import os
+import logging
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                              QGridLayout, QFrame, QLabel)
 from PyQt6.QtCore import Qt, QSize
@@ -14,6 +15,9 @@ from QMCWidgets.QMCSliderGroup import QMCSliderGroup
 _QSS_PATH = os.path.join(os.path.dirname(__file__), "RolandD70.qss")
 
 
+log = logging.getLogger(__name__)
+
+
 class QMCSurfaceD70(QWidget):
     """Roland D-70 Super LA Synthesis — Surface Controller"""
 
@@ -22,6 +26,7 @@ class QMCSurfaceD70(QWidget):
         self.setWindowTitle("Roland D-70 Super LA Synthesis")
         self._load_stylesheet()
         self._setup_ui()
+        self._connect_signals()
 
     def _load_stylesheet(self):
         with open(_QSS_PATH, "r", encoding="utf-8") as f:
@@ -100,6 +105,11 @@ class QMCSurfaceD70(QWidget):
         bottom_panel.addWidget(self.keyboard)
 
         main_layout.addLayout(bottom_panel)
+
+    # ── Signal connections ──
+
+    def _connect_signals(self):
+        pass
 
     # ── Section builders ──
 
@@ -227,6 +237,7 @@ class QMCSurfaceD70(QWidget):
 if __name__ == '__main__':
     import sys
     from PyQt6.QtWidgets import QApplication
+    logging.basicConfig(level=logging.DEBUG, format="%(name)s | %(message)s")
     app = QApplication(sys.argv)
     app.setStyle('windowsvista')
     surface = QMCSurfaceD70()
