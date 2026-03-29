@@ -195,8 +195,7 @@ class QMCSurfaceD70(QWidget):
 
     def _build_value_section(self):
         grp = QMCGroup(title="VALUE")
-        self.value_dial = QMCDial(label="Data Entry")
-        self.value_dial.value = 64
+        self.value_dial = QMCDial(label="Data Entry", endless=True)
         grp.addWidget(self.value_dial)
         return grp
 
